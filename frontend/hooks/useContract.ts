@@ -732,28 +732,45 @@ export function useContract() {
   };
 
   const withdrawFees = async () => {
-    if (!hashconnect) throw new Error('HashConnect not initialized');
-
     try {
-      console.log('🔷 Starting fee withdrawal with HashConnect...');
+      if (!isConnected || !accountId) {
+        throw new Error('Please connect your wallet first');
+      }
 
-      // Build withdrawFees transaction
-      const tx = new ContractExecuteTransaction()
-        .setContractId(ContractId.fromString(CONFIG.LENDING_POOL_ID))
-        .setGas(300000)
-        .setFunction('withdrawFees');
+      console.log('🔷 Starting fee withdrawal with HashConnect...');
+      console.log('Account ID:', accountId);
+
+      // Use the Hedera ID if available, otherwise try to convert
+      let lendingPoolId: string;
+      if ('LENDING_POOL_ID' in CONFIG && CONFIG.LENDING_POOL_ID.startsWith('0.0.')) {
+        lendingPoolId = (CONFIG as any).LENDING_POOL_ID;
+      } else if (CONFIG.LENDING_POOL_ADDRESS.startsWith('0x')) {
+        try {
+          lendingPoolId = evmAddressToHederaId(CONFIG.LENDING_POOL_ADDRESS);
+        } catch (error: any) {
+          throw new Error('Please add LENDING_POOL_ID to your constants. See console for details.');
+        }
+      } else {
+        lendingPoolId = CONFIG.LENDING_POOL_ADDRESS;
+      }
 
       console.log('🔷 Executing withdrawFees via HashConnect...');
 
-      const result = await executeContractFunction(
-        hashconnect,
-        accountId!,
+      // Use HashConnect to execute the contract function
+      const result = await hashConnectExecuteContract(
+        accountId,
+        lendingPoolId,
         'withdrawFees',
-        tx
+        {},
+        300000 // gas limit
       );
 
       console.log('✅ Fee withdrawal successful!', result);
-      return { success: true, txHash: result.transactionId };
+
+      return {
+        success: true,
+        txHash: result.transactionId || 'Transaction completed'
+      };
     } catch (error: any) {
       console.error('❌ Fee withdrawal error:', error);
       throw new Error(error.message || 'Failed to withdraw fees');

@@ -9,6 +9,7 @@ export interface Property {
   tokenAddress?: string | null;
   tokenSupply: number;
   verifiedAt?: string | null;
+  rejectionReason?: string | null;
   createdAt: string;
 }
 

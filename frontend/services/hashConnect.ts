@@ -3,10 +3,10 @@ import { AccountId, LedgerId, ContractExecuteTransaction, ContractFunctionParame
 
 const env = "testnet";
 const appMetadata = {
-    name: "HederaAir",
-    description: "HederaAir - Hedera Hashgraph DApp",
+    name: "TerraCRED",
+    description: "TerraCRED - Property DeFi Platform",
     icons: [typeof window !== 'undefined' ? window.location.origin + "/favicon.ico" : "/favicon.ico"],
-    url:  "http://localhost:3000",
+    url: typeof window !== 'undefined' ? window.location.origin : "https://frontend-ila0wdhfe-hemjay07s-projects.vercel.app",
 };
 
 // Initialize HashConnect only on client side
@@ -19,44 +19,75 @@ const initializeHashConnect = async (): Promise<HashConnect> => {
         throw new Error("HashConnect can only be initialized in browser environment");
     }
 
+    console.log("🔷 Initializing HashConnect...");
+    console.log("🔷 Environment:", env);
+    console.log("🔷 App metadata:", appMetadata);
+    console.log("🔷 Current origin:", typeof window !== 'undefined' ? window.location.origin : 'N/A');
+
     // Import HashConnect
     const module = await import('hashconnect');
     const HashConnectClass = module.HashConnect;
+    console.log("🔷 HashConnect module imported");
+
+    // Get project ID from env or fallback
+    const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "fb29af584e8f72298b6386b0c3724234";
+    console.log("🔷 Using WalletConnect Project ID:", projectId);
 
     // Create instance
     const instance = new HashConnectClass(
         LedgerId.fromString(env),
-        "fb29af584e8f72298b6386b0c3724234", // projectId
+        projectId,
         appMetadata,
         true
     );
 
-    console.log("HashConnect instance created", instance);
+    console.log("✅ HashConnect instance created", instance);
 
     // Initialize and wait for it to complete
-    await instance.init();
-    console.log("HashConnect initialized successfully");
+    try {
+        await instance.init();
+        console.log("✅ HashConnect initialized successfully");
+    } catch (initError: any) {
+        console.error("❌ HashConnect initialization failed:", initError);
+        console.error("❌ Error message:", initError?.message);
+        throw initError;
+    }
 
     hc = instance;
     return instance;
 };
 
-// Only initialize on client side
-if (typeof window !== 'undefined') {
-    hcInstancePromise = initializeHashConnect();
-}
-
-export { hc, hcInitPromise };
-
-
+// Lazy initialization - only initialize when first requested
 export const getHashConnectInstance = async (): Promise<HashConnect> => {
-    if (!hcInstancePromise) {
-        throw new Error("HashConnect not initialized. Make sure this is called on the client side.");
+    if (typeof window === 'undefined') {
+        throw new Error("HashConnect can only be used in browser environment");
     }
 
-    // Wait for the instance to be created and initialized
+    // If already initialized, return the existing instance
+    if (hc) {
+        console.log("🔷 Returning existing HashConnect instance");
+        return hc;
+    }
+
+    // If initialization is in progress, wait for it
+    if (hcInstancePromise) {
+        console.log("🔷 Waiting for ongoing HashConnect initialization...");
+        return await hcInstancePromise;
+    }
+
+    // Start initialization
+    console.log("🔷 Starting new HashConnect initialization...");
+    hcInstancePromise = initializeHashConnect().catch((error) => {
+        console.error("❌ HashConnect initialization failed permanently:", error);
+        // Reset the promise so it can be retried
+        hcInstancePromise = null;
+        throw error;
+    });
+
     return await hcInstancePromise;
 };
+
+export { hc, hcInitPromise };
 
 export const getConnectedAccountIds = async () => {
     const instance = await getHashConnectInstance();

@@ -20,6 +20,8 @@ export default function RepayPage() {
   const [heNGNBalance, setHeNGNBalance] = useState('0');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [processingStep, setProcessingStep] = useState('');
 
   // Auto-refresh function
   const refreshLoanData = async () => {
