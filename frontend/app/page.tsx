@@ -1,73 +1,67 @@
 'use client';
 
-import { useEffect } from 'react'; // Make sure this is imported
 import Link from "next/link";
 
 
 export default function Home() {
-
-  // Add this right at the start
-  useEffect(() => {
-    console.log('Checking for wallets...');
-    console.log('MetaMask (ethereum):', typeof window.ethereum !== 'undefined');
-    
-    // Check for HashPack with delay
-    setTimeout(() => {
-      // @ts-ignore
-      console.log('HashPack:', typeof window.hashpack !== 'undefined', window.hashpack);
-    }, 3000);
-  }, []);
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-20">
-        <div className="max-w-4xl mx-auto text-center">
+      <section className="container mx-auto px-4 py-24 md:py-32">
+        <div className="max-w-5xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
-            <span className="text-sm text-primary font-medium">
-              Powered by Hedera 💜
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-muted border border-border mb-6">
+            <span className="text-xs text-muted-foreground font-medium">
+              Powered by Hedera Network
             </span>
           </div>
 
           {/* Main Headline */}
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-            Turn Your Property Into Liquidity
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+            Turn <span style={{color: 'var(--brick)'}}>Your Property</span> Into Instant Liquidity
           </h1>
 
           {/* Subheadline */}
-          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-            Nigeria's first real estate DeFi protocol. Tokenize your property, 
-            borrow Naira stablecoins, keep your home.
+          <p className="text-xl md:text-2xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
+            Nigeria's first real estate DeFi protocol. Tokenize your property,
+            borrow heNGN stablecoins instantly, and keep ownership of your home.
           </p>
 
           {/* CTA Buttons */}
-<div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-  <Link 
-    href="/tokenize"
-    className="px-8 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity text-center"
-  >
-    Get Started
-  </Link>
-  <Link 
-    href="/properties"
-    className="px-8 py-4 bg-card border border-border text-foreground rounded-lg font-semibold hover:bg-card/80 transition-colors text-center"
-  >
-    Learn More
-  </Link>
-</div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
+            <Link
+              href="/tokenize"
+              className="px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors text-center"
+            >
+              Get Started
+            </Link>
+            <Link
+              href="/properties"
+              className="px-8 py-3 bg-card border border-border text-foreground rounded-lg font-semibold hover:bg-muted transition-colors text-center"
+            >
+              Explore Platform
+            </Link>
+          </div>
+
           {/* Trust Indicators */}
           <div className="flex flex-wrap items-center justify-center gap-8 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
-              <span className="text-success">✓</span>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
               <span>Instant Settlement</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-success">✓</span>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
               <span>Secure on Hedera</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-success">✓</span>
-              <span>Eco-Friendly</span>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              <span>Carbon Negative</span>
             </div>
           </div>
         </div>
@@ -77,39 +71,42 @@ export default function Home() {
       {/* How It Works Section */}
       <section className="container mx-auto px-4 py-20">
         <div className="max-w-5xl mx-auto">
-          <h2 className="text-4xl font-bold text-center mb-12">How It Works</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold mb-3">How It Works</h2>
+            <p className="text-muted-foreground">Three simple steps to unlock your property's value</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Step 1 */}
-            <div className="text-center p-8 rounded-lg bg-card border border-border">
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-primary">1</span>
+            <div className="text-center p-6 rounded-lg bg-card border border-border">
+              <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mx-auto mb-4">
+                <span className="text-xl font-bold">1</span>
               </div>
-              <h3 className="text-xl font-semibold mb-3">Tokenize Property</h3>
-              <p className="text-muted-foreground">
+              <h3 className="text-lg font-semibold mb-2">Tokenize Property</h3>
+              <p className="text-sm text-muted-foreground">
                 Submit your property details. Get it verified and receive RWA tokens.
               </p>
             </div>
 
             {/* Step 2 */}
-            <div className="text-center p-8 rounded-lg bg-card border border-border">
-              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-accent">2</span>
+            <div className="text-center p-6 rounded-lg bg-card border border-border">
+              <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mx-auto mb-4">
+                <span className="text-xl font-bold">2</span>
               </div>
-              <h3 className="text-xl font-semibold mb-3">Borrow heNGN</h3>
-              <p className="text-muted-foreground">
-                Lock your tokens as collateral. Borrow Naira stablecoins instantly.
+              <h3 className="text-lg font-semibold mb-2">Borrow heNGN</h3>
+              <p className="text-sm text-muted-foreground">
+                Lock tokens as collateral. Borrow up to 66% of your property value.
               </p>
             </div>
 
             {/* Step 3 */}
-            <div className="text-center p-8 rounded-lg bg-card border border-border">
-              <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl font-bold text-success">3</span>
+            <div className="text-center p-6 rounded-lg bg-card border border-border">
+              <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center mx-auto mb-4">
+                <span className="text-xl font-bold">3</span>
               </div>
-              <h3 className="text-xl font-semibold mb-3">Repay & Unlock</h3>
-              <p className="text-muted-foreground">
-                Pay back your loan anytime. Unlock your collateral. Keep your property.
+              <h3 className="text-lg font-semibold mb-2">Repay & Unlock</h3>
+              <p className="text-sm text-muted-foreground">
+                Pay back your loan anytime. Unlock collateral. Keep your property.
               </p>
             </div>
           </div>

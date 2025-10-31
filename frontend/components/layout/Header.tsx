@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
+import useHashConnect from '@/hooks/useHashConnect';
+import { CONFIG } from '@/constants';
 
 
 const HashConnectButton = dynamic(
@@ -10,6 +12,8 @@ const HashConnectButton = dynamic(
 );
 
 export default function Header() {
+  const { accountId } = useHashConnect();
+  const isAdmin = accountId === CONFIG.ADMIN_ACCOUNT_ID;
 
   // const handleConnect = async () => {
   //   setIsConnecting(true);
@@ -29,19 +33,25 @@ export default function Header() {
   // };
 
   return (
-    <header className="border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
+    <header className="border-b border-border bg-background sticky top-0 z-50">
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-16 items-center justify-between gap-4">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">T</span>
+          <Link href="/" className="flex items-center gap-4 group">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="TerraCRED"
+              className="h-16 w-16 object-contain group-hover:scale-105 transition-transform duration-300"
+            />
+            <div className="flex flex-col">
+              <span className="text-2xl font-bold group-hover:text-primary transition-colors duration-300">TerraCRED</span>
+              <span className="text-xs text-muted-foreground font-medium tracking-wider uppercase">Property DeFi</span>
             </div>
-            <span className="font-bold text-xl">TerraCred</span>
           </Link>
 
           {/* Navigation */}
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-8 flex-1 justify-center">
             <Link href="/properties" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Properties
             </Link>
@@ -51,12 +61,17 @@ export default function Header() {
             <Link href="/borrow" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
               Borrow
             </Link>
-            <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
-              Admin
-            </Link>
+            {isAdmin && (
+              <Link href="/admin" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Admin
+              </Link>
+            )}
           </nav>
 
-        <HashConnectButton/>
+          {/* Connect Button */}
+          <div className="flex items-center">
+            <HashConnectButton />
+          </div>
         </div>
       </div>
     </header>

@@ -1,54 +1,85 @@
 @import "tailwindcss";
 
-/* TerraCred Theme - Dark Mode */
+/* TerraCRED Professional Theme - Clean & Minimal */
 :root {
-  /* Backgrounds */
-  --background: #0F172A;
-  --foreground: #F1F5F9;
-  --card: #1E293B;
-  --card-foreground: #F1F5F9;
-  
-  /* Primary (Hedera Purple) */
-  --primary: #82269E;
-  --primary-foreground: #FFFFFF;
-  
-  /* Accent (Nigeria Green) */
-  --accent: #008751;
-  --accent-foreground: #FFFFFF;
-  
-  /* Borders */
-  --border: #334155;
-  --ring: #82269E;
-  
-  /* Radius */
+  /* Backgrounds - Clean slate */
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #171717;
+  --card-foreground: #fafafa;
+
+  /* Primary - Copper/Orange from logo */
+  --primary: #D97644;
+  --primary-foreground: #ffffff;
+
+  /* Brick - Terracotta/Clay for "Your Property" emphasis */
+  --brick: #C85A3D;
+
+  /* Accent - Same as primary for consistency */
+  --accent: #D97644;
+  --accent-foreground: #ffffff;
+
+  /* Muted - Neutral grays */
+  --muted: #262626;
+  --muted-foreground: #a1a1a1;
+
+  /* Borders & Inputs */
+  --border: #262626;
+  --input: #262626;
+  --ring: #8a63d2;
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+
+  /* Radius - Minimal */
   --radius: 0.5rem;
 }
 
 @theme inline {
+  /* Base Colors - Neutral palette */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-brick: var(--brick);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
   --color-border: var(--border);
+  --color-input: var(--input);
   --color-ring: var(--ring);
-  
-  /* Custom Colors */
-  --color-hedera-purple: #82269E;
-  --color-nigeria-green: #008751;
-  --color-success: #10B981;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
-  --color-gold: #FFD700;
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  /* Minimal semantic colors - only what's needed */
+  --color-success: #22c55e;
+  --color-warning: #eab308;
+  --color-danger: #ef4444;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: var(--font-inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography Enhancements */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-manrope, var(--font-inter, sans-serif));
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Monospace for financial data */
+.font-mono, .tabular-nums {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
 }
 
 /* Custom Scrollbar */

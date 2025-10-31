@@ -731,6 +731,35 @@ export function useContract() {
     }
   };
 
+  const withdrawFees = async () => {
+    if (!hashconnect) throw new Error('HashConnect not initialized');
+
+    try {
+      console.log('🔷 Starting fee withdrawal with HashConnect...');
+
+      // Build withdrawFees transaction
+      const tx = new ContractExecuteTransaction()
+        .setContractId(ContractId.fromString(CONFIG.LENDING_POOL_ID))
+        .setGas(300000)
+        .setFunction('withdrawFees');
+
+      console.log('🔷 Executing withdrawFees via HashConnect...');
+
+      const result = await executeContractFunction(
+        hashconnect,
+        accountId!,
+        'withdrawFees',
+        tx
+      );
+
+      console.log('✅ Fee withdrawal successful!', result);
+      return { success: true, txHash: result.transactionId };
+    } catch (error: any) {
+      console.error('❌ Fee withdrawal error:', error);
+      throw new Error(error.message || 'Failed to withdraw fees');
+    }
+  };
+
   return {
     depositCollateral,
     borrow,
@@ -740,5 +769,6 @@ export function useContract() {
     getTokenBalance,
     addSupportedToken,
     withdrawCollateral,
+    withdrawFees,
   };
 }

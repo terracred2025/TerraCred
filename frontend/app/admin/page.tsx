@@ -3,16 +3,34 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import useHashConnect from '@/hooks/useHashConnect';
+import { useContract } from '@/hooks/useContract';
 import { api } from '@/lib/api';
 import { CONFIG } from '@/constants';
+import { toast } from '@/lib/toast';
+import { ConfirmModal } from '@/components/ConfirmModal';
+import { LoadingSpinner } from '@/components/LoadingSpinner';
 import type { Property } from '@/types';
 
 export default function AdminPage() {
   const { isConnected, accountId } = useHashConnect();
+  const { withdrawFees, getTokenBalance } = useContract();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'verified' | 'pending' | 'rejected'>('all');
   const [verifying, setVerifying] = useState<string | null>(null);
+  const [withdrawingFees, setWithdrawingFees] = useState(false);
+  const [poolBalance, setPoolBalance] = useState<string>('0');
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    description: '',
+    onConfirm: () => {},
+  });
 
   // Check if user is admin
   const isAdmin = accountId === CONFIG.ADMIN_ACCOUNT_ID;
@@ -30,6 +48,14 @@ export default function AdminPage() {
         if (response.success) {
           setProperties(response.properties);
         }
+
+        // Fetch pool balance (accumulated fees)
+        try {
+          const balance = await getTokenBalance(CONFIG.LENDING_POOL_ID, CONFIG.HENGN_TOKEN_ADDRESS);
+          setPoolBalance(balance);
+        } catch (error) {
+          console.error('Failed to fetch pool balance:', error);
+        }
       } catch (error) {
         console.error('Failed to fetch properties:', error);
       } finally {
@@ -41,100 +67,133 @@ export default function AdminPage() {
   }, [isConnected, accountId]);
 
   const handleVerifyProperty = async (propertyId: string) => {
-    const confirmed = confirm(
-      `🔍 VERIFY PROPERTY ${propertyId}\n\n` +
-      `This will:\n` +
-      `• Mint RWA tokens to the property owner\n` +
-      `• Mark the property as verified\n` +
-      `• Allow the property to be used as collateral\n\n` +
-      `Are you sure you want to verify this property?`
-    );
+    setConfirmModal({
+      isOpen: true,
+      title: 'Verify Property',
+      description: `This will mint RWA tokens to the property owner and mark the property as verified. The owner can then use it as collateral.`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setVerifying(propertyId);
+        const loadingToast = toast.loading('Verifying property...');
 
-    if (!confirmed) return;
+        try {
+          const response = await fetch(`${CONFIG.API_URL}/properties/${propertyId}/verify`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              verifier: accountId,
+            }),
+          });
 
-    setVerifying(propertyId);
-    try {
-      const response = await fetch(`${CONFIG.API_URL}/properties/${propertyId}/verify`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          verifier: accountId,
-        }),
-      });
+          const result = await response.json();
+          toast.dismiss(loadingToast);
 
-      const result = await response.json();
+          if (result.success) {
+            toast.success('Property verified successfully');
 
-      if (result.success) {
-        alert(
-          `✅ Property verified successfully!\n\n` +
-          `Property ID: ${propertyId}\n` +
-          `Token ID: ${result.property.tokenId}\n` +
-          `Status: ${result.property.status}\n\n` +
-          `The owner can now use this property as collateral.`
-        );
-
-        // Refresh properties list
-        const refreshResponse = await api.getProperties();
-        if (refreshResponse.success) {
-          setProperties(refreshResponse.properties);
+            // Refresh properties list
+            const refreshResponse = await api.getProperties();
+            if (refreshResponse.success) {
+              setProperties(refreshResponse.properties);
+            }
+          } else {
+            toast.error(result.error || 'Verification failed');
+          }
+        } catch (error: any) {
+          toast.dismiss(loadingToast);
+          toast.error(error.message || 'Verification error');
+        } finally {
+          setVerifying(null);
         }
-      } else {
-        alert(`❌ Verification failed:\n${result.error}`);
-      }
-    } catch (error: any) {
-      alert(`❌ Verification error:\n${error.message}`);
-    } finally {
-      setVerifying(null);
-    }
+      },
+    });
   };
 
   const handleRejectProperty = async (propertyId: string) => {
-    const reason = prompt(
-      `❌ REJECT PROPERTY ${propertyId}\n\n` +
-      `Please provide a reason for rejection:`
-    );
+    setConfirmModal({
+      isOpen: true,
+      title: 'Reject Property',
+      description: `This property will be marked as rejected and the owner will be notified.`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        const loadingToast = toast.loading('Rejecting property...');
 
-    if (!reason) return;
+        try {
+          const response = await fetch(`${CONFIG.API_URL}/properties/${propertyId}/reject`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              reason: 'Property does not meet requirements',
+            }),
+          });
 
-    try {
-      const response = await fetch(`${CONFIG.API_URL}/properties/${propertyId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason,
-        }),
-      });
+          const result = await response.json();
+          toast.dismiss(loadingToast);
 
-      const result = await response.json();
+          if (result.success) {
+            toast.success('Property rejected');
 
-      if (result.success) {
-        alert(`✅ Property rejected.\n\nReason: ${reason}`);
-
-        // Refresh properties list
-        const refreshResponse = await api.getProperties();
-        if (refreshResponse.success) {
-          setProperties(refreshResponse.properties);
+            // Refresh properties list
+            const refreshResponse = await api.getProperties();
+            if (refreshResponse.success) {
+              setProperties(refreshResponse.properties);
+            }
+          } else {
+            toast.error(result.error || 'Rejection failed');
+          }
+        } catch (error: any) {
+          toast.dismiss(loadingToast);
+          toast.error(error.message || 'Error rejecting property');
         }
-      } else {
-        alert(`❌ Rejection failed:\n${result.error}`);
-      }
-    } catch (error: any) {
-      alert(`❌ Error:\n${error.message}`);
-    }
+      },
+    });
+  };
+
+  const handleWithdrawFees = async () => {
+    const poolBalanceNaira = parseFloat(poolBalance) / 100;
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'Withdraw Fees',
+      description: `Withdraw ₦${poolBalanceNaira.toLocaleString()} in accumulated fees to your wallet?`,
+      onConfirm: async () => {
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        setWithdrawingFees(true);
+        const loadingToast = toast.loading('Withdrawing fees...');
+
+        try {
+          const result = await withdrawFees();
+          toast.dismiss(loadingToast);
+
+          if (result.success) {
+            toast.success(`Successfully withdrew ₦${poolBalanceNaira.toLocaleString()}`);
+
+            // Refresh pool balance
+            const newBalance = await getTokenBalance(CONFIG.LENDING_POOL_ID, CONFIG.HENGN_TOKEN_ADDRESS);
+            setPoolBalance(newBalance);
+          }
+        } catch (error: any) {
+          toast.dismiss(loadingToast);
+          toast.error(error.message || 'Fee withdrawal failed');
+        } finally {
+          setWithdrawingFees(false);
+        }
+      },
+    });
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'verified':
-        return <span className="px-2 py-1 bg-success/10 text-success border border-success/20 rounded text-xs font-medium">✓ Verified</span>;
+        return <span className="px-2 py-1 bg-muted text-foreground rounded text-xs font-medium">Verified</span>;
       case 'pending':
-        return <span className="px-2 py-1 bg-warning/10 text-warning border border-warning/20 rounded text-xs font-medium">⏳ Pending</span>;
+        return <span className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs font-medium">Pending</span>;
       case 'rejected':
-        return <span className="px-2 py-1 bg-danger/10 text-danger border border-danger/20 rounded text-xs font-medium">✗ Rejected</span>;
+        return <span className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs font-medium">Rejected</span>;
       default:
         return null;
     }
@@ -150,10 +209,10 @@ export default function AdminPage() {
     return (
       <div className="container mx-auto px-4 py-20">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="bg-warning/10 border border-warning/20 rounded-lg p-8">
-            <p className="text-warning font-medium mb-4">⚠️ Wallet Not Connected</p>
+          <div className="bg-card border border-border rounded-lg p-8">
+            <p className="text-foreground font-medium mb-4">Wallet Not Connected</p>
             <p className="text-muted-foreground mb-6">
-              Please connect your wallet to access the admin panel.
+              Connect your wallet to access the admin panel
             </p>
             <Link
               href="/"
@@ -172,10 +231,10 @@ export default function AdminPage() {
     return (
       <div className="container mx-auto px-4 py-20">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="bg-danger/10 border border-danger/20 rounded-lg p-8">
-            <p className="text-danger font-medium mb-4">🚫 Access Denied</p>
+          <div className="bg-card border border-border rounded-lg p-8">
+            <p className="text-foreground font-medium mb-4">Access Denied</p>
             <p className="text-muted-foreground mb-6">
-              You do not have admin privileges. Only the platform administrator can access this page.
+              Admin privileges required
             </p>
             <div className="text-xs text-muted-foreground mb-4">
               <p>Your account: <span className="font-mono">{accountId}</span></p>
@@ -197,52 +256,90 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-20">
-        <div className="text-center text-muted-foreground">Loading properties...</div>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-20">
+    <div className="container mx-auto px-4 py-16">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Admin Panel</h1>
-        <p className="text-muted-foreground">
+      <div className="mb-16">
+        <h1 className="text-4xl font-bold mb-4">Admin Panel</h1>
+        <p className="text-muted-foreground mb-2">
           Manage and verify property submissions
         </p>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-muted-foreground">
           Admin account: <span className="font-mono">{accountId}</span>
         </p>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-        <div className="bg-card border border-border rounded-lg p-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
+        <div className="bg-card border border-border rounded-lg p-6">
           <p className="text-sm text-muted-foreground mb-1">Total Properties</p>
           <p className="text-2xl font-bold">{properties.length}</p>
         </div>
-        <div className="bg-warning/10 border border-warning/20 rounded-lg p-4">
-          <p className="text-sm text-warning mb-1">Pending Verification</p>
-          <p className="text-2xl font-bold text-warning">
+        <div className="bg-muted border border-border rounded-lg p-6">
+          <p className="text-sm text-muted-foreground mb-1">Pending</p>
+          <p className="text-2xl font-bold">
             {properties.filter(p => p.status === 'pending').length}
           </p>
         </div>
-        <div className="bg-success/10 border border-success/20 rounded-lg p-4">
-          <p className="text-sm text-success mb-1">Verified</p>
-          <p className="text-2xl font-bold text-success">
+        <div className="bg-muted border border-border rounded-lg p-6">
+          <p className="text-sm text-muted-foreground mb-1">Verified</p>
+          <p className="text-2xl font-bold">
             {properties.filter(p => p.status === 'verified').length}
           </p>
         </div>
-        <div className="bg-danger/10 border border-danger/20 rounded-lg p-4">
-          <p className="text-sm text-danger mb-1">Rejected</p>
-          <p className="text-2xl font-bold text-danger">
+        <div className="bg-muted border border-border rounded-lg p-6">
+          <p className="text-sm text-muted-foreground mb-1">Rejected</p>
+          <p className="text-2xl font-bold">
             {properties.filter(p => p.status === 'rejected').length}
           </p>
         </div>
       </div>
 
+      {/* Fee Withdrawal Section */}
+      <div className="bg-card border border-border rounded-lg p-8 mb-12">
+        <h2 className="text-lg font-bold mb-2">Platform Fees</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Accumulated origination fees ({CONFIG.ORIGINATION_FEE}%)
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="bg-muted rounded-lg p-4">
+            <p className="text-xs text-muted-foreground mb-1">Pool Balance</p>
+            <p className="text-2xl font-bold">
+              ₦{(parseFloat(poolBalance) / 100).toLocaleString()}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">Available</p>
+          </div>
+
+          <div className="bg-muted rounded-lg p-4">
+            <p className="text-xs text-muted-foreground mb-1">Fee Rate</p>
+            <p className="text-2xl font-bold">{CONFIG.ORIGINATION_FEE}%</p>
+            <p className="text-xs text-muted-foreground mt-1">Per loan</p>
+          </div>
+
+          <div className="bg-muted rounded-lg p-4">
+            <p className="text-xs text-muted-foreground mb-1">Total Verified</p>
+            <p className="text-2xl font-bold">{properties.filter(p => p.status === 'verified').length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Properties</p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleWithdrawFees}
+          disabled={withdrawingFees || parseFloat(poolBalance) === 0}
+          className="px-6 py-3 bg-primary hover:opacity-90 text-primary-foreground rounded-lg font-semibold transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {withdrawingFees ? 'Withdrawing...' : `Withdraw ₦${(parseFloat(poolBalance) / 100).toLocaleString()}`}
+        </button>
+      </div>
+
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-8">
+      <div className="flex gap-3 mb-8">
         <button
           onClick={() => setFilter('all')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -295,11 +392,11 @@ export default function AdminPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           {filteredProperties.map((property) => (
             <div
               key={property.propertyId}
-              className="bg-card border border-border rounded-lg p-6"
+              className="bg-card border border-border rounded-lg p-8"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex-1">
@@ -395,6 +492,15 @@ export default function AdminPage() {
           ))}
         </div>
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        onClose={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        description={confirmModal.description}
+      />
     </div>
   );
 }

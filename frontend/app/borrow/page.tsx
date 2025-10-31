@@ -6,6 +6,7 @@ import useHashConnect from '@/hooks/useHashConnect';
 import { useContract } from '@/hooks/useContract';
 import { api } from '@/lib/api';
 import { CONFIG } from '@/constants';
+import { InfoIcon } from '@/components/Tooltip';
 import type { Property } from '@/types';
 import { AssociateHeNGNButton } from '@/components/AssociateHeNGNButton';
 
@@ -131,13 +132,6 @@ export default function BorrowPage() {
     try {
       setProcessingStep('Step 1/2: Requesting token approval - Check your wallet!');
 
-      console.log('🔷 BORROW PAGE: Depositing ENTIRE property as collateral:');
-      console.log('  Token Address:', selectedProperty.tokenAddress);
-      console.log('  Collateral Amount (tokens):', allTokens, '(ALL)');
-      console.log('  Property ID:', selectedProperty.propertyId);
-      console.log('  Total Property Value (Naira):', totalPropertyValue);
-      console.log('  Max LTV (66%):', totalPropertyValue * 0.6667);
-
       const result = await depositCollateral(
         selectedProperty.tokenAddress!,
         allTokens,
@@ -162,13 +156,11 @@ export default function BorrowPage() {
 
         // Check if we got valid collateral data
         if (parseFloat(details.collateralAmount) > 0) {
-          console.log('✅ Loan details confirmed:', details);
           break;
         }
 
         // If no collateral yet, wait and retry
         if (retries < maxRetries - 1) {
-          console.log(`⏳ Loan not indexed yet, retrying (${retries + 1}/${maxRetries})...`);
           await new Promise(resolve => setTimeout(resolve, 2000));
         }
         retries++;
@@ -213,6 +205,28 @@ export default function BorrowPage() {
       return;
     }
 
+    // Calculate fee breakdown
+    const originationFee = requestedAmountNaira * (CONFIG.ORIGINATION_FEE / 100);
+    const netAmountReceived = requestedAmountNaira - originationFee;
+    const estimatedYearlyInterest = requestedAmountNaira * (CONFIG.INTEREST_RATE / 100);
+
+    const confirmed = confirm(
+      `💳 BORROW CONFIRMATION\n\n` +
+      `Requested Amount: ₦${requestedAmountNaira.toLocaleString()}\n\n` +
+      `Fee Breakdown:\n` +
+      `• Origination Fee (${CONFIG.ORIGINATION_FEE}%): ₦${originationFee.toFixed(2)}\n` +
+      `• Net Amount You'll Receive: ₦${netAmountReceived.toLocaleString()}\n\n` +
+      `What You'll Owe:\n` +
+      `• Principal: ₦${requestedAmountNaira.toLocaleString()}\n` +
+      `• Interest (${CONFIG.INTEREST_RATE}% APR): ~₦${estimatedYearlyInterest.toLocaleString()}/year\n` +
+      `• Due Date: ${new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toLocaleDateString()}\n\n` +
+      `⚠️ Important:\n` +
+      `You receive ₦${netAmountReceived.toLocaleString()} but owe ₦${requestedAmountNaira.toLocaleString()} + interest\n\n` +
+      `Continue?`
+    );
+
+    if (!confirmed) return;
+
     setProcessing(true);
     try {
       // ⭐ Contract expects amount in NAIRA (matching maxBorrow units), NOT kobo!
@@ -220,7 +234,15 @@ export default function BorrowPage() {
       const amountNaira = Math.floor(requestedAmountNaira).toString();
       const result = await borrow(amountNaira);
 
-      alert(`✅ Borrowed ₦${borrowAmount} heNGN!\n\nTransaction: ${result.txHash}\n\n💡 Check your HashPack wallet for the heNGN tokens.\nIf you don't see them, you may need to associate the heNGN token first.`);
+      alert(
+        `✅ Loan Disbursed Successfully!\n\n` +
+        `Transaction: ${result.txHash}\n\n` +
+        `Amount Borrowed: ₦${requestedAmountNaira.toLocaleString()}\n` +
+        `Origination Fee: ₦${originationFee.toFixed(2)}\n` +
+        `Net Received: ₦${netAmountReceived.toLocaleString()}\n\n` +
+        `💡 Check your HashPack wallet for the heNGN tokens.\n` +
+        `If you don't see them, you may need to associate the heNGN token first.`
+      );
       window.location.href = '/dashboard';
     } catch (error: any) {
       alert(`❌ Failed: ${error.message}`);
@@ -235,8 +257,8 @@ export default function BorrowPage() {
     return (
       <div className="container mx-auto px-4 py-20">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="bg-warning/10 border border-warning/20 rounded-lg p-8">
-            <p className="text-warning font-medium mb-4">⚠️ Wallet Not Connected</p>
+          <div className="bg-card border border-border rounded-lg p-8">
+            <p className="text-foreground font-medium mb-4">Wallet Not Connected</p>
             <Link href="/" className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90">
               Connect Wallet
             </Link>
@@ -251,10 +273,10 @@ export default function BorrowPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-20">
+    <div className="container mx-auto px-4 py-16">
       <div className="max-w-3xl mx-auto">
         <h1 className="text-4xl font-bold mb-4">Borrow heNGN</h1>
-        <p className="text-muted-foreground mb-8">
+        <p className="text-muted-foreground mb-10">
           Lock your property tokens as collateral and borrow Naira stablecoins.
         </p>
 
@@ -282,23 +304,21 @@ export default function BorrowPage() {
         {/* Select Property */}
         {step === 'select' && (
           <div className="bg-card border rounded-lg p-8">
-            <h2 className="text-xl font-semibold mb-4">Select Property</h2>
-
-            {/* Warning if they already have active collateral */}
-            {loanDetails && parseFloat(loanDetails.collateralAmount) > 0 && (
-              <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-4">
-                <p className="text-sm text-warning">
-                  ⚠️ <strong>You already have an active loan!</strong>
-                  <br />
-                  You can only use one property as collateral at a time. To use a different property,
-                  please repay your current loan first.
-                </p>
-              </div>
-            )}
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-xl font-semibold">Select Property</h2>
+              {loanDetails && parseFloat(loanDetails.collateralAmount) > 0 && (
+                <InfoIcon tooltip={
+                  <div className="text-xs space-y-1">
+                    <p><strong>Active loan detected</strong></p>
+                    <p>Only one property can be used as collateral at a time. Repay your current loan to use a different property.</p>
+                  </div>
+                } />
+              )}
+            </div>
 
             {properties.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">No verified properties yet.</p>
+                <p className="text-muted-foreground mb-4">No verified properties yet</p>
                 <Link href="/tokenize" className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg">
                   Tokenize Property
                 </Link>
@@ -328,7 +348,7 @@ export default function BorrowPage() {
                           <p className="font-semibold">{property.address}</p>
                           <p className="text-xs text-muted-foreground">{property.propertyId}</p>
                           {isCollateral && (
-                            <p className="text-xs text-primary mt-1">🔒 Currently used as collateral</p>
+                            <p className="text-xs text-muted-foreground mt-1">Currently used as collateral</p>
                           )}
                         </div>
                         <div className="text-right">
@@ -350,78 +370,46 @@ export default function BorrowPage() {
             <button onClick={() => setStep('select')} className="text-sm text-muted-foreground hover:text-foreground mb-4">
               ← Change Property
             </button>
-            <h2 className="text-xl font-semibold mb-4">Use Property as Collateral</h2>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-xl font-semibold">Deposit Collateral</h2>
+              <InfoIcon tooltip={
+                <div className="text-xs space-y-2">
+                  <p><strong>Loan Terms:</strong></p>
+                  <ul className="list-disc list-inside space-y-1">
+                    <li>Max: 66% LTV</li>
+                    <li>Rate: {CONFIG.INTEREST_RATE}% APR</li>
+                    <li>Term: {CONFIG.LOAN_TERM_MONTHS} months</li>
+                    <li>Repay anytime</li>
+                  </ul>
+                  <p className="pt-2 border-t border-border"><strong>Process:</strong></p>
+                  <p>Requires 2 wallet signatures: (1) Approve (2) Deposit</p>
+                </div>
+              } />
+            </div>
 
             {/* Property Summary */}
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-6">
-              <p className="text-sm font-medium text-primary mb-2">🏠 Property Details</p>
-              <p className="font-semibold">{selectedProperty.address}</p>
-              <p className="text-xs text-muted-foreground mt-1">{selectedProperty.propertyId}</p>
+            <div className="bg-muted border border-border rounded-lg p-4 mb-6">
+              <p className="text-sm font-medium mb-2">{selectedProperty.address}</p>
+              <p className="text-xs text-muted-foreground mb-3">{selectedProperty.propertyId}</p>
 
-              <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-primary/20">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Value</p>
                   <p className="text-lg font-bold">₦{(selectedProperty.value / 1000000).toFixed(1)}M</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Property Tokens</p>
-                  <p className="text-lg font-bold">{selectedProperty.tokenSupply} tokens</p>
+                  <p className="text-xs text-muted-foreground">Max Borrow</p>
+                  <p className="text-lg font-bold">₦{(selectedProperty.value * 0.6667 / 1000000).toFixed(1)}M</p>
                 </div>
               </div>
-            </div>
-
-            {/* Loan Terms */}
-            <div className="mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-              <p className="text-sm font-medium text-blue-400 mb-3">
-                📋 Loan Terms & Conditions
-              </p>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div className="bg-background/50 rounded p-2">
-                  <p className="text-xs text-muted-foreground">Max Loan (LTV)</p>
-                  <p className="font-bold text-sm">₦{(selectedProperty.value * 0.6667 / 1000000).toFixed(1)}M (66%)</p>
-                </div>
-                <div className="bg-background/50 rounded p-2">
-                  <p className="text-xs text-muted-foreground">Interest Rate</p>
-                  <p className="font-bold text-sm">{CONFIG.INTEREST_RATE}% APR</p>
-                </div>
-                <div className="bg-background/50 rounded p-2">
-                  <p className="text-xs text-muted-foreground">Loan Term</p>
-                  <p className="font-bold text-sm">{CONFIG.LOAN_TERM_MONTHS} months</p>
-                </div>
-                <div className="bg-background/50 rounded p-2">
-                  <p className="text-xs text-muted-foreground">Collateral</p>
-                  <p className="font-bold text-sm">{selectedProperty.tokenSupply} tokens (100%)</p>
-                </div>
-              </div>
-              <div className="pt-3 border-t border-blue-500/20">
-                <ul className="text-xs text-muted-foreground space-y-1">
-                  <li>✅ Repay anytime before due date to unlock property</li>
-                  <li>✅ Interest accrues daily on borrowed amount</li>
-                  <li>⚠️ If liquidated: surplus value returned to you</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Two-Step Process Warning */}
-            <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-              <p className="text-sm text-amber-600 dark:text-amber-400 mb-2">
-                <strong>📝 Two Wallet Signatures Required:</strong>
-              </p>
-              <ol className="text-xs text-muted-foreground space-y-1 ml-4">
-                <li>1️⃣ <strong>Approve</strong> the lending pool to use your property tokens</li>
-                <li>2️⃣ <strong>Deposit</strong> all tokens as collateral</li>
-              </ol>
-              <p className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                ⚠️ Keep your wallet open and sign both transactions quickly!
-              </p>
             </div>
 
             {processingStep && (
-              <div className="mb-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                <p className="text-sm text-blue-400 text-center">
+              <div className="mb-4 p-4 bg-muted border border-border rounded-lg">
+                <p className="text-sm text-center">
                   {processingStep}
                   <br />
-                  <span className="text-xs">Check your wallet for signature requests</span>
+                  <span className="text-xs text-muted-foreground">Check your wallet for signature requests</span>
                 </p>
               </div>
             )}
@@ -431,7 +419,7 @@ export default function BorrowPage() {
               disabled={processing}
               className="w-full px-6 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 disabled:opacity-50"
             >
-              {processing ? 'Processing...' : `Use Entire Property as Collateral (${selectedProperty.tokenSupply} tokens)`}
+              {processing ? 'Processing...' : `Deposit ${selectedProperty.tokenSupply} Tokens`}
             </button>
           </div>
         )}
@@ -439,178 +427,103 @@ export default function BorrowPage() {
         {/* Borrow */}
         {step === 'borrow' && selectedProperty && (
           <div className="bg-card border rounded-lg p-8">
-            <h2 className="text-xl font-semibold mb-4">Borrow heNGN</h2>
-
-            {/* Show collateral property info */}
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
-              <p className="text-sm font-medium text-primary mb-1">🏠 Collateral Property</p>
-              <p className="font-semibold">{selectedProperty.address}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {selectedProperty.propertyId}
-              </p>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-xl font-semibold">Borrow heNGN</h2>
+              <InfoIcon tooltip={
+                <div className="text-xs space-y-2">
+                  <p><strong>Collateral:</strong> {selectedProperty.address}</p>
+                  <p className="text-muted-foreground">{selectedProperty.propertyId}</p>
+                </div>
+              } />
             </div>
 
-            {/* Loan Timeline & Critical Info */}
-            {loanDetails && parseFloat(loanDetails.timestamp) > 0 && parseFloat(loanDetails.dueDate) > 0 && (() => {
-              const loanStartDate = new Date(parseInt(loanDetails.timestamp) * 1000);
-              // Use actual due date from contract instead of calculating
+            {/* Loan Timeline - Only show if active loan */}
+            {loanDetails && parseFloat(loanDetails.borrowedAmount) > 0 && parseFloat(loanDetails.dueDate) > 0 && (() => {
               const dueDate = new Date(parseInt(loanDetails.dueDate) * 1000);
-              const daysElapsed = Math.floor((Date.now() - loanStartDate.getTime()) / (1000 * 60 * 60 * 24));
               const daysRemaining = Math.floor((dueDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
               const isOverdue = daysRemaining < 0;
-              const isDueSoon = daysRemaining <= 30 && daysRemaining > 0;
 
               return (
-                <div className={`border rounded-lg p-4 mb-4 ${isOverdue ? 'bg-destructive/10 border-destructive/20' : isDueSoon ? 'bg-warning/10 border-warning/20' : 'bg-blue-500/10 border-blue-500/20'}`}>
-                  <p className={`text-sm font-medium mb-2 ${isOverdue ? 'text-destructive' : isDueSoon ? 'text-warning' : 'text-blue-400'}`}>
-                    {isOverdue ? '🚨 LOAN OVERDUE' : isDueSoon ? '⚠️ DUE SOON' : '📅 Loan Timeline'}
-                  </p>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-muted border border-border rounded-lg p-4 mb-4">
+                  <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-muted-foreground">Loan Started:</p>
-                      <p className="font-semibold">
-                        {loanStartDate.toLocaleDateString()}
-                      </p>
+                      <p className="text-sm font-medium mb-1">Loan Due Date</p>
+                      <p className="text-lg font-bold">{dueDate.toLocaleDateString()}</p>
                     </div>
-                    <div>
-                      <p className="text-muted-foreground">Loan Term:</p>
-                      <p className="font-semibold">
-                        {CONFIG.LOAN_TERM_MONTHS} months
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">Due Date:</p>
-                      <p className={`font-semibold ${isOverdue ? 'text-destructive' : isDueSoon ? 'text-warning' : ''}`}>
-                        {dueDate.toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground">
-                        {isOverdue ? 'Days Overdue:' : 'Days Remaining:'}
-                      </p>
-                      <p className={`text-lg font-bold ${isOverdue ? 'text-destructive' : isDueSoon ? 'text-warning' : 'text-success'}`}>
-                        {isOverdue ? Math.abs(daysRemaining) : daysRemaining} days
-                      </p>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground mb-1">{isOverdue ? 'Overdue' : 'Days Remaining'}</p>
+                      <p className="text-2xl font-bold">{isOverdue ? Math.abs(daysRemaining) : daysRemaining}</p>
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-current/20">
-                    {isOverdue ? (
-                      <p className="text-xs text-destructive font-medium">
-                        🚨 <strong>URGENT:</strong> Your loan is overdue! Repay immediately to avoid liquidation.
-                      </p>
-                    ) : isDueSoon ? (
-                      <p className="text-xs text-warning font-medium">
-                        ⚠️ <strong>Warning:</strong> Loan due in {daysRemaining} days. Repay soon to avoid default.
-                      </p>
-                    ) : (
-                      <p className="text-xs text-blue-300">
-                        💡 <strong>Interest accrues at {CONFIG.INTEREST_RATE}% APR.</strong> You have {daysRemaining} days to repay.
-                      </p>
-                    )}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Elapsed: {daysElapsed} days of {CONFIG.LOAN_TERM_MONTHS * 30} days
+                  {isOverdue && (
+                    <p className="text-xs text-muted-foreground mt-3 pt-3 border-t border-border">
+                      Loan is overdue. Please repay immediately.
                     </p>
-                  </div>
+                  )}
                 </div>
               );
             })()}
 
             {/* Manage Loan Actions */}
             {loanDetails && parseFloat(loanDetails.borrowedAmount) > 0 && (
-              <div className="bg-card border border-primary rounded-lg p-4 mb-6">
+              <div className="bg-muted border border-border rounded-lg p-4 mb-6">
                 <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-sm font-semibold">💼 Loan Management</h3>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground">Total Debt</h3>
+                    <p className="text-2xl font-bold">
+                      ₦{(parseFloat(loanDetails.totalDebt) / 100).toFixed(2)}
+                    </p>
+                  </div>
                   <Link
                     href="/repay"
                     className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
                   >
-                    Repay Loan →
+                    Repay
                   </Link>
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-background/50 rounded p-2">
-                    <p className="text-muted-foreground mb-1">Total Debt</p>
-                    <p className="text-sm font-bold text-orange-500">
-                      ₦{(parseFloat(loanDetails.totalDebt) / 100).toFixed(2)}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Principal: ₦{(parseFloat(loanDetails.borrowedAmount) / 100).toFixed(2)}
-                      <br />
-                      Interest: ₦{(parseFloat(loanDetails.accruedInterest) / 100).toFixed(2)}
-                    </p>
-                  </div>
-                  <div className="bg-background/50 rounded p-2">
-                    <p className="text-muted-foreground mb-1">Extension Status</p>
-                    {loanDetails.extensionUsed ? (
-                      <p className="text-sm font-bold text-muted-foreground">✓ Used</p>
-                    ) : (() => {
-                      const dueDate = parseInt(loanDetails.dueDate);
-                      if (dueDate === 0) return <p className="text-sm font-bold text-muted-foreground">N/A</p>;
-
-                      const now = Math.floor(Date.now() / 1000);
-                      const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
-                      const isEligible = now >= dueDate - thirtyDaysInSeconds && now <= dueDate;
-
-                      return isEligible ? (
-                        <>
-                          <p className="text-sm font-bold text-success">✓ Available</p>
-                          <p className="text-xs text-muted-foreground mt-1">Visit repay page to extend</p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="text-sm font-bold text-muted-foreground">Not yet</p>
-                          <p className="text-xs text-muted-foreground mt-1">Available 30 days before due date</p>
-                        </>
-                      );
-                    })()}
-                  </div>
+                <div className="text-xs text-muted-foreground">
+                  Principal: ₦{(parseFloat(loanDetails.borrowedAmount) / 100).toFixed(2)} • Interest: ₦{(parseFloat(loanDetails.accruedInterest) / 100).toFixed(2)}
                 </div>
               </div>
             )}
 
-            {/* Collateral & Equity Summary */}
-            <div className="bg-success/10 border border-success/20 rounded-lg p-4 mb-6">
-              <p className="text-sm font-medium text-success mb-3">✅ Property Locked as Collateral</p>
+            {/* Collateral Summary */}
+            <div className="bg-muted border border-border rounded-lg p-4 mb-6">
+              <div className="flex items-center gap-2 mb-3">
+                <p className="text-sm font-medium">Collateral Status</p>
+                <InfoIcon tooltip={
+                  <div className="text-xs space-y-2">
+                    <p><strong>Health Factor:</strong> {(() => {
+                      const hf = loanDetails?.healthFactor || '0';
+                      const isInfinite = hf === '115792089237316195423570985008687907853269984665640564039457584007913129639935' || parseFloat(hf) > 1000000;
+                      if (isInfinite) return '∞ (No Debt)';
+                      return `${parseFloat(hf).toFixed(0)}%`;
+                    })()}</p>
+                    <p className="pt-2 border-t border-border">
+                      <strong>Liquidation:</strong> If health drops below {CONFIG.LIQUIDATION_THRESHOLD}%, your property may be liquidated. Your equity will be returned.
+                    </p>
+                  </div>
+                } />
+              </div>
 
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
                   <p className="text-muted-foreground">Property Value</p>
-                  <p className="text-lg font-bold text-success">
+                  <p className="text-lg font-bold">
                     {(() => {
-                      // ⭐ Calculate actual property value from contract's maxBorrow
-                      // maxBorrowFromContract is in NAIRA (not kobo!)
                       const maxBorrowNaira = parseFloat(maxBorrowFromContract);
                       if (maxBorrowNaira > 0) {
-                        // maxBorrow = propertyValue * (100/150) = propertyValue * 0.6667
-                        // So: propertyValue = maxBorrow / 0.6667 = maxBorrow * 1.5
                         const actualPropertyValue = maxBorrowNaira * 1.5;
                         return `₦${(actualPropertyValue / 1000000).toFixed(1)}M`;
                       }
-                      // Fallback to database value if no contract data
                       return `₦${(selectedProperty.value / 1000000).toFixed(1)}M`;
                     })()}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Tokens Locked</p>
-                  <p className="text-lg font-bold text-success">
-                    {(loanDetails?.collateralAmount && parseFloat(loanDetails.collateralAmount) > 0)
-                      ? loanDetails.collateralAmount
-                      : selectedProperty.tokenSupply}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Current Debt</p>
-                  <p className="text-lg font-bold text-orange-500">
-                    ₦{((parseFloat(loanDetails?.totalDebt || '0') / 100) / 1000000).toFixed(2)}M
-                  </p>
-                </div>
-                <div>
                   <p className="text-muted-foreground">Your Equity</p>
-                  <p className="text-lg font-bold text-blue-400">
+                  <p className="text-lg font-bold">
                     {(() => {
-                      // ⭐ Calculate equity using contract-derived property value
-                      // maxBorrowFromContract is in NAIRA
                       const maxBorrowNaira = parseFloat(maxBorrowFromContract);
                       const actualPropertyValue = maxBorrowNaira > 0 ? maxBorrowNaira * 1.5 : selectedProperty.value;
                       const totalDebtNaira = parseFloat(loanDetails?.totalDebt || '0') / 100;
@@ -621,92 +534,13 @@ export default function BorrowPage() {
               </div>
 
               {maxBorrowFromContract && parseFloat(maxBorrowFromContract) > 0 && (
-                <div className="mt-3 pt-3 border-t border-success/20">
+                <div className="mt-3 pt-3 border-t border-border">
                   <p className="text-xs text-muted-foreground">Available to Borrow</p>
-                  <p className="text-xl font-bold text-success">
-                    {/* ⭐ maxBorrow is in Naira, convert to millions */}
+                  <p className="text-xl font-bold">
                     ₦{(parseFloat(maxBorrowFromContract) / 1000000).toFixed(2)}M
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {(() => {
-                      // ⭐ maxBorrowFromContract is in Naira
-                      const maxBorrowNaira = parseFloat(maxBorrowFromContract);
-                      const actualPropertyValue = maxBorrowNaira * 1.5; // Reverse of 66.67% LTV
-                      return `(Max 66% LTV of ₦${(actualPropertyValue / 1000000).toFixed(1)}M = ₦${(maxBorrowNaira / 1000000).toFixed(1)}M total)`;
-                    })()}
                   </p>
                 </div>
               )}
-            </div>
-
-            {/* One property at a time rule */}
-            {loanDetails && parseFloat(loanDetails.collateralAmount) > 0 && (
-              <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4 mb-6">
-                <p className="text-sm text-blue-400">
-                  ℹ️ <strong>Note:</strong> You can only use one property as collateral at a time.
-                  Repay your loan to unlock this property and use a different one.
-                </p>
-              </div>
-            )}
-
-            {/* Liquidation Warning */}
-            <div className="bg-warning/10 border border-warning/20 rounded-lg p-4 mb-6">
-              <p className="text-sm font-medium text-warning mb-2">⚠️ Important: Liquidation & Equity Protection</p>
-
-              <div className="mb-3">
-                <p className="text-xs text-muted-foreground mb-1">Current Health Factor:</p>
-                {(() => {
-                  const hf = loanDetails?.healthFactor || '0';
-                  // Check if it's uint256 max (no debt) - display as infinity
-                  const isInfinite = hf === '115792089237316195423570985008687907853269984665640564039457584007913129639935' || parseFloat(hf) > 1000000;
-
-                  if (isInfinite) {
-                    return (
-                      <>
-                        <p className="text-2xl font-bold text-success">∞ (No Debt)</p>
-                        <p className="text-xs mt-1 text-success">
-                          ✅ Perfect - You have no outstanding debt
-                        </p>
-                      </>
-                    );
-                  }
-
-                  const healthFactor = parseFloat(hf);
-                  return (
-                    <>
-                      <p className={`text-2xl font-bold ${healthFactor >= 150 ? 'text-success' : healthFactor >= 120 ? 'text-warning' : 'text-destructive'}`}>
-                        {healthFactor.toFixed(0)}%
-                      </p>
-                      <p className="text-xs mt-1">
-                        {healthFactor >= 150
-                          ? '✅ Safe - Well above liquidation threshold'
-                          : healthFactor >= 120
-                            ? '⚠️ Warning - Close to liquidation threshold'
-                            : '🚨 Danger - At risk of liquidation'}
-                      </p>
-                    </>
-                  );
-                })()}
-              </div>
-
-              <div className="pt-3 border-t border-warning/20">
-                <p className="text-xs font-medium text-warning mb-2">How Liquidation Works:</p>
-                <ul className="text-xs text-muted-foreground space-y-2">
-                  <li>1️⃣ If health factor drops below <strong>{CONFIG.LIQUIDATION_THRESHOLD}%</strong>, anyone can liquidate</li>
-                  <li>2️⃣ Liquidator pays your debt (₦{((parseFloat(loanDetails?.totalDebt || '0') / 100) / 1000000).toFixed(2)}M + interest)</li>
-                  <li>3️⃣ Liquidator receives your property tokens</li>
-                  <li>4️⃣ <strong className="text-blue-400">Your equity (₦{(() => {
-                    // ⭐ maxBorrowFromContract is in Naira
-                    const maxBorrowNaira = parseFloat(maxBorrowFromContract);
-                    const actualPropertyValue = maxBorrowNaira > 0 ? maxBorrowNaira * 1.5 : selectedProperty.value;
-                    const totalDebtNaira = parseFloat(loanDetails?.totalDebt || '0') / 100;
-                    return ((actualPropertyValue - totalDebtNaira) / 1000000).toFixed(2);
-                  })()}M) is protected and returned to you</strong></li>
-                </ul>
-                <p className="text-xs text-blue-400 mt-2 font-medium">
-                  💡 You don't lose your equity! Only the portion needed to cover the debt is used.
-                </p>
-              </div>
             </div>
 
             <div className="mb-6">
@@ -734,6 +568,41 @@ export default function BorrowPage() {
                 Enter amount in Naira (₦). Max: ₦{parseFloat(maxBorrowFromContract).toLocaleString()} • Rate: {CONFIG.INTEREST_RATE}% APR
               </p>
             </div>
+
+            {/* Fee Breakdown Display */}
+            {borrowAmount && parseFloat(borrowAmount) > 0 && (
+              <div className="bg-muted border border-border rounded-lg p-4 mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <h3 className="text-sm font-medium">Fee Breakdown</h3>
+                  <InfoIcon tooltip={
+                    <div className="text-xs space-y-2">
+                      <p><strong>Origination Fee:</strong> {CONFIG.ORIGINATION_FEE}% deducted from loan</p>
+                      <p><strong>Interest:</strong> {CONFIG.INTEREST_RATE}% APR accrues daily</p>
+                      <p><strong>Est. 12-month cost:</strong> ~{CONFIG.INTEREST_RATE}% of principal</p>
+                    </div>
+                  } />
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Requested</span>
+                    <span className="font-semibold">₦{parseFloat(borrowAmount).toLocaleString()}</span>
+                  </div>
+
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Fee ({CONFIG.ORIGINATION_FEE}%)</span>
+                    <span className="font-semibold">-₦{(parseFloat(borrowAmount) * (CONFIG.ORIGINATION_FEE / 100)).toFixed(2)}</span>
+                  </div>
+
+                  <div className="border-t border-border pt-2 mt-2"></div>
+
+                  <div className="flex justify-between">
+                    <span className="font-medium">You'll Receive</span>
+                    <span className="font-bold text-lg">₦{(parseFloat(borrowAmount) * (1 - CONFIG.ORIGINATION_FEE / 100)).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={handleBorrow}

@@ -4,20 +4,39 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import useHashConnect from '@/hooks/useHashConnect';
 import { useContract } from '@/hooks/useContract';
+import { useTransactionFlow } from '@/hooks/useTransactionFlow';
+import { TransactionStatus } from '@/components/TransactionStatus';
+import { InfoIcon } from '@/components/Tooltip';
 import { CONFIG } from '@/constants';
 import type { Loan } from '@/types';
 
 export default function RepayPage() {
   const { isConnected, accountId, connect } = useHashConnect();
   const { repay, extendLoan, getLoanDetails, getTokenBalance } = useContract();
+  const txFlow = useTransactionFlow();
 
   const [loanDetails, setLoanDetails] = useState<Loan | null>(null);
   const [repayAmount, setRepayAmount] = useState('');
   const [heNGNBalance, setHeNGNBalance] = useState('0');
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
-  const [processingStep, setProcessingStep] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-refresh function
+  const refreshLoanData = async () => {
+    if (!isConnected || !accountId) return;
+
+    try {
+      // Fetch loan details
+      const details = await getLoanDetails(accountId) as Loan;
+      setLoanDetails(details);
+
+      // Fetch heNGN balance
+      const balance = await getTokenBalance(accountId, CONFIG.HENGN_TOKEN_ADDRESS);
+      setHeNGNBalance(balance);
+    } catch (error) {
+      console.error('Failed to refresh loan data:', error);
+    }
+  };
 
   useEffect(() => {
     async function fetchLoanData() {
@@ -28,15 +47,7 @@ export default function RepayPage() {
 
       try {
         setLoading(true);
-
-        // Fetch loan details
-        const details = await getLoanDetails(accountId) as Loan;
-        setLoanDetails(details);
-
-        // Fetch heNGN balance
-        const balance = await getTokenBalance(accountId, CONFIG.HENGN_TOKEN_ADDRESS);
-        setHeNGNBalance(balance);
-
+        await refreshLoanData();
       } catch (error) {
         console.error('Failed to fetch loan data:', error);
         setError('Failed to load loan details');
@@ -97,35 +108,29 @@ export default function RepayPage() {
 
     if (!confirmed) return;
 
-    try {
-      setProcessing(true);
-      setError(null);
+    const result = await txFlow.executeTransaction(
+      async () => {
+        return await repay(repayAmountCents.toString());
+      },
+      {
+        successMessage: isFullRepayment
+          ? '✅ Loan fully repaid! Collateral unlocked!'
+          : `✅ Payment of ₦${(repayAmountCents / 100).toFixed(2)} processed successfully!`,
+        onSuccess: async (result) => {
+          // Auto-refresh loan data
+          await refreshLoanData();
+          setRepayAmount('');
 
-      setProcessingStep('Approving heNGN transfer...');
-      await new Promise(resolve => setTimeout(resolve, 1000));
-
-      setProcessingStep('Processing repayment...');
-      const result = await repay(repayAmountCents.toString());
-
-      if (result.success) {
-        alert(`✅ Repayment successful!\n\nTransaction: ${result.txHash}\n\nYour loan has been ${isFullRepayment ? 'fully repaid and collateral unlocked!' : 'partially repaid.'}`);
-
-        // Refresh loan details
-        const updatedDetails = await getLoanDetails(accountId!) as Loan;
-        setLoanDetails(updatedDetails);
-        setRepayAmount('');
-
-        // Refresh balance
-        const balance = await getTokenBalance(accountId!, CONFIG.HENGN_TOKEN_ADDRESS);
-        setHeNGNBalance(balance);
+          // If fully repaid, the page will automatically show the success screen
+          // because we're refreshing loanDetails and checking totalDebt
+        },
+        redirectTo: isFullRepayment ? '/dashboard' : undefined,
+        redirectDelay: isFullRepayment ? 2000 : undefined,
       }
-    } catch (error: any) {
-      console.error('Repayment failed:', error);
-      setError(error.message || 'Repayment failed');
-      alert(`❌ Repayment failed:\n${error.message}`);
-    } finally {
-      setProcessing(false);
-      setProcessingStep('');
+    );
+
+    if (!result) {
+      setError('Repayment failed. Please try again.');
     }
   };
 
@@ -273,21 +278,20 @@ export default function RepayPage() {
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-4xl font-bold mb-4">Repay Loan</h1>
 
-          <div className="bg-success/10 border border-success/20 rounded-lg p-8 mb-6">
-            <p className="text-6xl mb-4">✅</p>
-            <p className="text-lg font-semibold text-success mb-4">
-              Loan Fully Repaid!
+          <div className="bg-card border border-border rounded-lg p-8 mb-6">
+            <p className="text-lg font-semibold mb-4">
+              Loan Fully Repaid
             </p>
             <p className="text-muted-foreground mb-2">
-              You have <span className="font-bold text-success">{loanDetails.collateralAmount} tokens</span> locked as collateral.
+              {loanDetails.collateralAmount} tokens locked as collateral
             </p>
             {isDustDebt && (
               <p className="text-xs text-muted-foreground mb-4">
-                (Remaining dust debt of ₦{(totalDebtCents / 100).toFixed(4)} is negligible and considered paid)
+                Remaining ₦{(totalDebtCents / 100).toFixed(4)} is negligible
               </p>
             )}
             <p className="text-muted-foreground mb-4">
-              Your loan is paid off! You can now withdraw your collateral to untokenize your property.
+              Your loan is paid off. Withdraw collateral from your dashboard.
             </p>
           </div>
 
@@ -295,7 +299,7 @@ export default function RepayPage() {
             href="/dashboard"
             className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 transition-opacity"
           >
-            Go to Dashboard to Withdraw Collateral
+            Go to Dashboard
           </Link>
         </div>
       </div>
@@ -309,18 +313,18 @@ export default function RepayPage() {
         <div className="max-w-2xl mx-auto text-center">
           <h1 className="text-4xl font-bold mb-4">Repay Loan</h1>
 
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-8 mb-6">
-            <p className="text-lg font-semibold text-blue-400 mb-4">
-              💰 Collateral Deposited
+          <div className="bg-card border border-border rounded-lg p-8 mb-6">
+            <p className="text-lg font-semibold mb-4">
+              Collateral Deposited
             </p>
             <p className="text-muted-foreground mb-2">
-              You have <span className="font-bold text-success">{loanDetails.collateralAmount} tokens</span> locked as collateral.
+              {loanDetails.collateralAmount} tokens locked as collateral
             </p>
             <p className="text-muted-foreground mb-4">
-              You can borrow up to <span className="font-bold text-primary">₦{(parseFloat(loanDetails.maxBorrow) / 1000000).toFixed(2)}M</span>
+              You can borrow up to ₦{(parseFloat(loanDetails.maxBorrow) / 1000000).toFixed(2)}M
             </p>
             <p className="text-sm text-muted-foreground">
-              You haven&apos;t borrowed any funds yet, so there&apos;s nothing to repay.
+              No active loan to repay
             </p>
           </div>
 
@@ -328,7 +332,7 @@ export default function RepayPage() {
             href="/borrow"
             className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-lg hover:opacity-90 transition-opacity"
           >
-            Borrow Funds Now
+            Borrow Funds
           </Link>
         </div>
       </div>
@@ -367,16 +371,16 @@ export default function RepayPage() {
   const isDueSoon = daysRemaining <= 30 && daysRemaining > 0;
 
   return (
-    <div className="container mx-auto px-4 py-20">
+    <div className="container mx-auto px-4 py-16">
       <div className="max-w-4xl mx-auto">
-        <div className="mb-8">
+        <div className="mb-12">
           <Link
             href="/dashboard"
             className="text-primary hover:underline mb-4 inline-block"
           >
             ← Back to Dashboard
           </Link>
-          <h1 className="text-4xl font-bold mb-2">Repay Loan</h1>
+          <h1 className="text-4xl font-bold mb-4">Repay Loan</h1>
           <p className="text-muted-foreground">
             Manage your loan repayment and extension options
           </p>
@@ -389,7 +393,7 @@ export default function RepayPage() {
         )}
 
         {/* Loan Status Overview */}
-        <div className="grid md:grid-cols-2 gap-6 mb-6">
+        <div className="grid md:grid-cols-2 gap-6 mb-10">
           {/* Debt Summary */}
           <div className="bg-card border border-border rounded-lg p-6">
             <h2 className="text-xl font-bold mb-4">💰 Debt Summary</h2>
@@ -433,38 +437,26 @@ export default function RepayPage() {
           </div>
         </div>
 
-        {/* Health Factor Warning */}
-        {healthFactor !== Number.MAX_SAFE_INTEGER && healthFactor < 150 && (
-          <div className={`${healthFactor < 120 ? 'bg-destructive/10 border-destructive text-destructive' : 'bg-orange-500/10 border-orange-500 text-orange-500'} border px-4 py-3 rounded-lg mb-6`}>
+        {/* Warnings - Only show critical info */}
+        {(healthFactor !== Number.MAX_SAFE_INTEGER && healthFactor < 120) || isOverdue ? (
+          <div className="bg-muted border border-border px-4 py-3 rounded-lg mb-6">
             <p className="font-semibold">
-              ⚠️ {healthFactor < 120 ? 'CRITICAL: Loan at risk of liquidation!' : 'Warning: Low health factor'}
+              {isOverdue ? 'Loan Overdue' : 'Low Health Factor'}
             </p>
-            <p className="text-sm mt-1">
-              Health Factor: {healthFactor.toFixed(2)}%
-              {healthFactor < 120 && ' (Below 120% liquidation threshold)'}
+            <p className="text-sm text-muted-foreground mt-1">
+              {isOverdue
+                ? `${Math.abs(daysRemaining)} days overdue. Repay immediately.`
+                : `Health: ${healthFactor.toFixed(0)}%. Below liquidation threshold.`}
             </p>
           </div>
-        )}
+        ) : null}
 
-        {/* Overdue Warning */}
-        {isOverdue && (
-          <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg mb-6">
-            <p className="font-semibold">🚨 LOAN OVERDUE</p>
-            <p className="text-sm mt-1">
-              Your loan is {Math.abs(daysRemaining)} days overdue. Please repay immediately to avoid liquidation.
-            </p>
-          </div>
-        )}
-
-        {/* Extension Eligible Notice */}
-        {isExtensionEligible() && (
-          <div className="bg-blue-500/10 border border-blue-500 text-blue-400 px-4 py-3 rounded-lg mb-6">
-            <p className="font-semibold">📅 Extension Available</p>
-            <p className="text-sm mt-1">
-              You can extend your loan by 3 months. This is a one-time option and requires paying accrued interest (₦{accruedInterestNaira.toFixed(2)}).
-            </p>
-          </div>
-        )}
+        {/* Transaction Status */}
+        <TransactionStatus
+          step={txFlow.state.step}
+          message={txFlow.state.message}
+          txHash={txFlow.state.txHash}
+        />
 
         {/* Repayment Form */}
         <div className="bg-card border border-border rounded-lg p-6 mb-6">
@@ -484,7 +476,7 @@ export default function RepayPage() {
                     setHeNGNBalance(balance);
                   }}
                   className="text-xs text-primary hover:underline"
-                  disabled={processing}
+                  disabled={txFlow.isProcessing}
                 >
                   🔄 Refresh
                 </button>
@@ -497,12 +489,12 @@ export default function RepayPage() {
                 onChange={(e) => setRepayAmount(e.target.value)}
                 placeholder="0.00"
                 className="flex-1 bg-background border border-border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary"
-                disabled={processing}
+                disabled={txFlow.isProcessing}
               />
               <button
                 onClick={handleMaxRepay}
                 className="bg-secondary text-secondary-foreground px-4 py-3 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-                disabled={processing}
+                disabled={txFlow.isProcessing}
               >
                 MAX
               </button>
@@ -523,49 +515,44 @@ export default function RepayPage() {
 
           <button
             onClick={handleRepay}
-            disabled={processing || !repayAmount || parseFloat(repayAmount) <= 0}
+            disabled={txFlow.isProcessing || !repayAmount || parseFloat(repayAmount) <= 0}
             className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {processing ? processingStep : 'Repay Loan'}
+            {txFlow.isProcessing ? txFlow.state.message : 'Repay Loan'}
           </button>
         </div>
 
-        {/* Extension Button */}
-        {isExtensionEligible() && (
+        {/* Extension Section */}
+        {isExtensionEligible() ? (
           <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-2xl font-bold mb-4">📅 Extend Loan</h2>
-            <p className="text-muted-foreground mb-4">
-              Extend your loan by 3 months (one-time option). Requires payment of accrued interest: ₦{accruedInterestNaira.toFixed(2)}
-            </p>
+            <div className="flex items-center gap-2 mb-4">
+              <h2 className="text-2xl font-bold">Loan Extension</h2>
+              <InfoIcon tooltip={
+                <div className="text-xs space-y-1">
+                  <p>Extend loan by 3 months (one-time)</p>
+                  <p>Requires interest payment: ₦{accruedInterestNaira.toFixed(2)}</p>
+                </div>
+              } />
+            </div>
             <button
               onClick={handleExtendLoan}
               disabled={processing}
-              className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-primary text-primary-foreground py-3 rounded-lg font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {processing ? processingStep : 'Extend Loan (Pay Interest & Add 3 Months)'}
+              {processing ? processingStep : `Extend for ₦${accruedInterestNaira.toFixed(2)}`}
             </button>
           </div>
-        )}
-
-        {/* Extension Not Available */}
-        {!isExtensionEligible() && !loanDetails.extensionUsed && !isOverdue && (
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-2xl font-bold mb-4">📅 Loan Extension</h2>
-            <p className="text-muted-foreground">
-              Extension option will be available within 30 days of your due date ({dueDate.toLocaleDateString()}).
+        ) : loanDetails.extensionUsed ? (
+          <div className="bg-muted border border-border rounded-lg p-6">
+            <p className="text-sm text-muted-foreground">Extension already used</p>
+          </div>
+        ) : !isOverdue ? (
+          <div className="bg-muted border border-border rounded-lg p-6">
+            <p className="text-sm text-muted-foreground">
+              Extension available 30 days before due date
             </p>
           </div>
-        )}
-
-        {/* Extension Already Used */}
-        {loanDetails.extensionUsed && (
-          <div className="bg-card border border-border rounded-lg p-6">
-            <h2 className="text-2xl font-bold mb-4">📅 Loan Extension</h2>
-            <p className="text-muted-foreground">
-              You have already used your one-time extension option. Please repay your loan before the due date.
-            </p>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

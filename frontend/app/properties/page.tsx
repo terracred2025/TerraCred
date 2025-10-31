@@ -38,11 +38,11 @@ export default function PropertiesPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'verified':
-        return <span className="px-2 py-1 bg-success/10 text-success border border-success/20 rounded text-xs font-medium">✓ Verified</span>;
+        return <span className="px-2 py-1 bg-muted text-foreground rounded text-xs font-medium">Verified</span>;
       case 'pending':
-        return <span className="px-2 py-1 bg-warning/10 text-warning border border-warning/20 rounded text-xs font-medium">⏳ Pending</span>;
+        return <span className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs font-medium">Pending</span>;
       case 'rejected':
-        return <span className="px-2 py-1 bg-danger/10 text-danger border border-danger/20 rounded text-xs font-medium">✗ Rejected</span>;
+        return <span className="px-2 py-1 bg-muted text-muted-foreground rounded text-xs font-medium">Rejected</span>;
       default:
         return null;
     }
@@ -57,14 +57,14 @@ export default function PropertiesPage() {
     return (
       <div className="container mx-auto px-4 py-20">
         <div className="max-w-2xl mx-auto text-center">
-          <div className="bg-warning/10 border border-warning/20 rounded-lg p-8">
-            <p className="text-warning font-medium mb-4">⚠️ Wallet Not Connected</p>
+          <div className="bg-card border border-border rounded-lg p-8">
+            <p className="text-foreground font-medium mb-4">Wallet Not Connected</p>
             <p className="text-muted-foreground mb-6">
               Please connect your wallet to view your properties.
             </p>
             <Link
               href="/"
-              className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90"
+              className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
             >
               Connect Wallet
             </Link>
@@ -83,9 +83,9 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-20">
+    <div className="container mx-auto px-4 py-16">
       {/* Header */}
-      <div className="mb-12">
+      <div className="mb-16">
         <h1 className="text-4xl font-bold mb-4">My Properties</h1>
         <p className="text-muted-foreground">
           View and manage your tokenized properties
@@ -93,13 +93,13 @@ export default function PropertiesPage() {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex gap-2 mb-8">
+      <div className="flex gap-3 mb-10">
         <button
           onClick={() => setFilter('all')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             filter === 'all'
               ? 'bg-primary text-primary-foreground'
-              : 'bg-card border border-border hover:bg-card/80'
+              : 'bg-muted hover:bg-muted/80'
           }`}
         >
           All ({properties.length})
@@ -109,7 +109,7 @@ export default function PropertiesPage() {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             filter === 'verified'
               ? 'bg-primary text-primary-foreground'
-              : 'bg-card border border-border hover:bg-card/80'
+              : 'bg-muted hover:bg-muted/80'
           }`}
         >
           Verified ({properties.filter(p => p.status === 'verified').length})
@@ -119,7 +119,7 @@ export default function PropertiesPage() {
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
             filter === 'pending'
               ? 'bg-primary text-primary-foreground'
-              : 'bg-card border border-border hover:bg-card/80'
+              : 'bg-muted hover:bg-muted/80'
           }`}
         >
           Pending ({properties.filter(p => p.status === 'pending').length})
@@ -136,13 +136,13 @@ export default function PropertiesPage() {
           </p>
           <Link
             href="/tokenize"
-            className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:opacity-90"
+            className="inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 transition-colors"
           >
             Tokenize Property
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {filteredProperties.map((property) => (
             <Link
               key={property.propertyId}
@@ -150,12 +150,12 @@ export default function PropertiesPage() {
               className="bg-card border border-border rounded-lg overflow-hidden hover:border-primary transition-colors group"
             >
               {/* Image Placeholder */}
-              <div className="h-48 bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+              <div className="h-48 bg-muted flex items-center justify-center">
                 <span className="text-6xl">🏠</span>
               </div>
 
               {/* Content */}
-              <div className="p-6">
+              <div className="p-8">
                 {/* Status Badge */}
                 <div className="mb-3">
                   {getStatusBadge(property.status)}
@@ -189,7 +189,7 @@ export default function PropertiesPage() {
 
                 {/* View Details */}
                 <div className="mt-4 pt-4 border-t border-border">
-                  <span className="text-sm text-primary group-hover:underline">
+                  <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                     View Details →
                   </span>
                 </div>
@@ -204,7 +204,7 @@ export default function PropertiesPage() {
         <div className="mt-12 text-center">
           <Link
             href="/tokenize"
-            className="inline-block px-8 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:opacity-90 transition-opacity"
+            className="inline-block px-8 py-4 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
           >
             + Tokenize Your Property
           </Link>

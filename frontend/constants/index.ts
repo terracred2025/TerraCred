@@ -27,6 +27,7 @@ export const CONFIG = {
   MAX_LTV: 66.67,
   LIQUIDATION_THRESHOLD: 120,
   INTEREST_RATE: 10, // 10% APR as per specification
+  ORIGINATION_FEE: 0.1, // 0.1% fee on borrowed amount
   LOAN_TERM_MONTHS: 12, // 12-month repayment period
   
   // Currency
