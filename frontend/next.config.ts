@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
 
   // Webpack configuration for better hashconnect handling
   // Note: Using webpack instead of Turbopack to avoid minification bugs
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       // Ensure proper handling of hashconnect and related packages
       config.resolve.fallback = {
@@ -17,11 +17,35 @@ const nextConfig: NextConfig = {
       };
     }
 
-    // Optimize module resolution for hashconnect
-    config.optimization = {
-      ...config.optimization,
-      moduleIds: 'deterministic',
-    };
+    // Configure Terser to avoid identifier collisions
+    if (!dev) {
+      const TerserPlugin = require('terser-webpack-plugin');
+
+      config.optimization = {
+        ...config.optimization,
+        minimize: true,
+        minimizer: [
+          new TerserPlugin({
+            terserOptions: {
+              compress: {
+                comparisons: false,
+                inline: 2,
+              },
+              mangle: {
+                safari10: true,
+                // Use longer variable names to avoid collisions
+                keep_fnames: false,
+              },
+              output: {
+                comments: false,
+                ascii_only: true,
+              },
+            },
+          }),
+        ],
+        concatenateModules: false, // Disable scope hoisting to prevent conflicts
+      };
+    }
 
     return config;
   },
