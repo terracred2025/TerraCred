@@ -30,7 +30,8 @@ const initializeHashConnect = async (): Promise<HashConnect> => {
     console.log("🔷 HashConnect module imported");
 
     // Get project ID from env or fallback
-    const projectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "fb29af584e8f72298b6386b0c3724234";
+    // IMPORTANT: Trim to remove any trailing newlines or whitespace
+    const projectId = (process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "fb29af584e8f72298b6386b0c3724234").trim();
     console.log("🔷 Using WalletConnect Project ID:", projectId);
 
     // Create instance
