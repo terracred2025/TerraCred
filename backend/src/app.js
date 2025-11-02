@@ -16,8 +16,22 @@ const transactionsRoutes = require('./routes/transactions.routes');
 
 const app = express();
 
-//middleware
-app.use(cors());
+//middleware - CORS configuration
+const corsOptions = {
+    origin: [
+        'http://localhost:3000',
+        'https://terracred2025.vercel.app',
+        'https://frontend-hemjay07s-projects.vercel.app',
+        'https://frontend-hemjay07-hemjay07s-projects.vercel.app',
+        'https://frontend-six-roan-89.vercel.app',
+        /\.vercel\.app$/ // Allow all Vercel preview deployments
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 //init hedera client
