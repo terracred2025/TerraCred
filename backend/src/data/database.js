@@ -1,4 +1,11 @@
-const Database = require('better-sqlite3');
+let Database;
+try {
+    Database = require('better-sqlite3');
+} catch (error) {
+    console.warn('better-sqlite3 not available in serverless environment');
+    Database = null;
+}
+
 const path = require('path');
 const fs = require('fs');
 
@@ -18,13 +25,43 @@ const DB_PATH = path.join(DATA_DIR, 'terracred.db');
 class DatabaseService {
     constructor() {
         console.log(`📦 Initializing SQLite database at: ${DB_PATH}`);
-        this.db = new Database(DB_PATH);
-        this.db.pragma('journal_mode = WAL'); // Better performance
-        this.initializeTables();
-        this.propertyCounter = this.getMaxPropertyId() + 1;
-        this.userCounter = this.getMaxUserId() + 1;
-        this.transactionCounter = this.getMaxTransactionId() + 1;
-        console.log(`✅ Database initialized successfully`);
+
+        try {
+            if (!Database) {
+                console.warn('⚠️ SQLite not available - using in-memory fallback');
+                this.useFallback = true;
+                this.memoryStore = {
+                    properties: new Map(),
+                    users: new Map(),
+                    transactions: new Map()
+                };
+                this.propertyCounter = 1;
+                this.userCounter = 1;
+                this.transactionCounter = 1;
+                console.log(`✅ In-memory database initialized successfully`);
+                return;
+            }
+
+            this.useFallback = false;
+            this.db = new Database(DB_PATH);
+            this.db.pragma('journal_mode = WAL'); // Better performance
+            this.initializeTables();
+            this.propertyCounter = this.getMaxPropertyId() + 1;
+            this.userCounter = this.getMaxUserId() + 1;
+            this.transactionCounter = this.getMaxTransactionId() + 1;
+            console.log(`✅ Database initialized successfully`);
+        } catch (error) {
+            console.error('Failed to initialize SQLite, using in-memory fallback:', error.message);
+            this.useFallback = true;
+            this.memoryStore = {
+                properties: new Map(),
+                users: new Map(),
+                transactions: new Map()
+            };
+            this.propertyCounter = 1;
+            this.userCounter = 1;
+            this.transactionCounter = 1;
+        }
     }
 
     initializeTables() {
@@ -138,6 +175,29 @@ class DatabaseService {
         const propertyId = property.propertyId || `PROP${String(this.propertyCounter++).padStart(3, '0')}`;
         property.propertyId = propertyId;
 
+        if (this.useFallback) {
+            // In-memory fallback
+            const prop = {
+                propertyId,
+                owner: property.owner,
+                address: property.address,
+                value: property.value,
+                description: property.description || '',
+                proofDocumentUri: property.proofDocumentUri || '',
+                appraisalHash: property.appraisalHash || '',
+                deedHash: property.deedHash || '',
+                status: property.status || 'pending',
+                tokenSupply: property.tokenSupply,
+                createdAt: property.createdAt ? new Date(property.createdAt).toISOString() : new Date().toISOString(),
+                verifiedAt: property.verifiedAt ? new Date(property.verifiedAt).toISOString() : null,
+                verifier: property.verifier || null,
+                tokenId: property.tokenId || null,
+                tokenAddress: property.tokenAddress || null
+            };
+            this.memoryStore.properties.set(propertyId, prop);
+            return prop;
+        }
+
         const stmt = this.db.prepare(`
             INSERT INTO properties (
                 propertyId, owner, address, value, description,
@@ -169,18 +229,30 @@ class DatabaseService {
     }
 
     getProperty(propertyId) {
+        if (this.useFallback) {
+            return this.memoryStore.properties.get(propertyId) || null;
+        }
         const stmt = this.db.prepare('SELECT * FROM properties WHERE propertyId = ?');
         const row = stmt.get(propertyId);
         return row ? this.deserializeProperty(row) : null;
     }
 
     getPropertiesByOwner(ownerAddress) {
+        if (this.useFallback) {
+            return Array.from(this.memoryStore.properties.values())
+                .filter(p => p.owner === ownerAddress)
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
         const stmt = this.db.prepare('SELECT * FROM properties WHERE owner = ? ORDER BY createdAt DESC');
         const rows = stmt.all(ownerAddress);
         return rows.map(row => this.deserializeProperty(row));
     }
 
     getAllProperties() {
+        if (this.useFallback) {
+            return Array.from(this.memoryStore.properties.values())
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
         const stmt = this.db.prepare('SELECT * FROM properties ORDER BY createdAt DESC');
         const rows = stmt.all();
         return rows.map(row => this.deserializeProperty(row));
@@ -189,6 +261,20 @@ class DatabaseService {
     updatePropertyStatus(propertyId, status, additionalData = {}) {
         const property = this.getProperty(propertyId);
         if (!property) return null;
+
+        if (this.useFallback) {
+            // Update in-memory store
+            property.status = status;
+            for (const [key, value] of Object.entries(additionalData)) {
+                if (key === 'verifiedAt' || key === 'rejectedAt' || key === 'delistedAt') {
+                    property[key] = value ? new Date(value).toISOString() : null;
+                } else {
+                    property[key] = value;
+                }
+            }
+            this.memoryStore.properties.set(propertyId, property);
+            return property;
+        }
 
         // Build dynamic update query
         const updates = ['status = ?'];
