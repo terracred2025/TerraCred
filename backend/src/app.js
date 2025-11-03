@@ -18,20 +18,36 @@ const app = express();
 
 //middleware - CORS configuration
 const corsOptions = {
-    origin: [
-        'http://localhost:3000',
-        'https://terracred2025.vercel.app',
-        'https://frontend-hemjay07s-projects.vercel.app',
-        'https://frontend-hemjay07-hemjay07s-projects.vercel.app',
-        'https://frontend-six-roan-89.vercel.app',
-        /\.vercel\.app$/ // Allow all Vercel preview deployments
-    ],
+    origin: function (origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+
+        const allowedOrigins = [
+            'http://localhost:3000',
+            'https://terracred2025.vercel.app',
+            'https://frontend-hemjay07s-projects.vercel.app',
+            'https://frontend-hemjay07-hemjay07s-projects.vercel.app',
+            'https://frontend-six-roan-89.vercel.app'
+        ];
+
+        // Check if origin is in allowed list or matches Vercel pattern
+        if (allowedOrigins.includes(origin) || origin.match(/\.vercel\.app$/)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
 };
 
 app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
 app.use(express.json());
 
 //init hedera client
