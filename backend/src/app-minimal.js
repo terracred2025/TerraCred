@@ -95,9 +95,10 @@ app.post('/api/properties/:id/verify', (req, res) => {
         property.appraisalHash = appraisalHash || '';
         property.deedHash = deedHash || '';
 
-        // Generate token info (simulated)
-        property.tokenId = `0.0.${Math.floor(Math.random() * 1000000)}`;
-        property.tokenAddress = `0x${Math.random().toString(16).slice(2, 42)}`;
+        // Generate token info in Hedera format (simulated)
+        const tokenIdNum = Math.floor(Math.random() * 1000000) + 100000; // 6-digit number
+        property.tokenId = `0.0.${tokenIdNum}`;
+        property.tokenAddress = `0.0.${tokenIdNum}`; // Hedera uses same format for both
 
         store.properties.set(req.params.id, property);
 
