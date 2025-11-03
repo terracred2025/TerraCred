@@ -95,10 +95,13 @@ app.post('/api/properties/:id/verify', (req, res) => {
         property.appraisalHash = appraisalHash || '';
         property.deedHash = deedHash || '';
 
-        // Generate token info in Hedera format (simulated)
-        const tokenIdNum = Math.floor(Math.random() * 1000000) + 100000; // 6-digit number
-        property.tokenId = `0.0.${tokenIdNum}`;
-        property.tokenAddress = `0.0.${tokenIdNum}`; // Hedera uses same format for both
+        // Use the master RWA token (real token on Hedera)
+        // In production, this would mint a new token, but in in-memory mode we use the master token
+        const masterTokenId = process.env.MASTER_RWA_TOKEN_ID || '0.0.7162666';
+        const masterTokenAddress = process.env.MASTER_RWA_TOKEN_ADDRESS || '0x77e18416fa0fdc850da4c0f6eed88d6c35265b12';
+
+        property.tokenId = masterTokenId;
+        property.tokenAddress = masterTokenAddress;
 
         store.properties.set(req.params.id, property);
 
