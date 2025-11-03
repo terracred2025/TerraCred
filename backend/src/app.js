@@ -99,22 +99,13 @@ app.locals.services = {
     liquidation: liquidationService
 }
 
-//routes (only if services are available)
-if (hederaService) {
-    app.use('/api/properties', propertyRoutes);
-    app.use('/api/loans', loanRoutes);
-    app.use('/api/users', userRoutes);
-    app.use('/api/assets', assetsRoutes);
-    app.use('/api/transactions', transactionsRoutes);
-} else {
-    // Fallback routes when services aren't initialized
-    app.use('/api/*', (req, res) => {
-        res.status(503).json({
-            error: 'Service Unavailable',
-            message: 'Hedera services not initialized. Please check environment variables.'
-        });
-    });
-}
+//routes - load regardless of service availability
+// Routes will handle missing services internally if needed
+app.use('/api/properties', propertyRoutes);
+app.use('/api/loans', loanRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/assets', assetsRoutes);
+app.use('/api/transactions', transactionsRoutes);
 
 //error handling
 app.use((err, req, res, next) => {
