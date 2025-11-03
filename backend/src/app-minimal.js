@@ -97,8 +97,9 @@ app.post('/api/properties/:id/verify', (req, res) => {
 
         // Use the master RWA token (real token on Hedera)
         // In production, this would mint a new token, but in in-memory mode we use the master token
-        const masterTokenId = process.env.MASTER_RWA_TOKEN_ID || '0.0.7162666';
-        const masterTokenAddress = process.env.MASTER_RWA_TOKEN_ADDRESS || '0x77e18416fa0fdc850da4c0f6eed88d6c35265b12';
+        // IMPORTANT: Trim to remove any trailing newlines or whitespace
+        const masterTokenId = (process.env.MASTER_RWA_TOKEN_ID || '0.0.7162666').trim();
+        const masterTokenAddress = (process.env.MASTER_RWA_TOKEN_ADDRESS || '0x77e18416fa0fdc850da4c0f6eed88d6c35265b12').trim();
 
         property.tokenId = masterTokenId;
         property.tokenAddress = masterTokenAddress;
