@@ -81,6 +81,16 @@ try {
     liquidationService = null;
 }
 
+//health check (before routes to avoid service dependency)
+app.get('/health', (req, res) => {
+    res.json({
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        network: 'testnet',
+        servicesInitialized: !!hederaService
+    });
+});
+
 //make services available to routes
 app.locals.services = {
     hedera: hederaService,
@@ -89,21 +99,22 @@ app.locals.services = {
     liquidation: liquidationService
 }
 
-//routes
-app.use('/api/properties', propertyRoutes);
-app.use('/api/loans', loanRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/assets', assetsRoutes);
-app.use('/api/transactions', transactionsRoutes);
-
-//health check
-app.get('/health', (req, res) => {
-    res.json({
-        status: 'healthy',
-        timestamp: new Date().toISOString(),
-        network: 'testnet'
+//routes (only if services are available)
+if (hederaService) {
+    app.use('/api/properties', propertyRoutes);
+    app.use('/api/loans', loanRoutes);
+    app.use('/api/users', userRoutes);
+    app.use('/api/assets', assetsRoutes);
+    app.use('/api/transactions', transactionsRoutes);
+} else {
+    // Fallback routes when services aren't initialized
+    app.use('/api/*', (req, res) => {
+        res.status(503).json({
+            error: 'Service Unavailable',
+            message: 'Hedera services not initialized. Please check environment variables.'
+        });
     });
-});
+}
 
 //error handling
 app.use((err, req, res, next) => {
