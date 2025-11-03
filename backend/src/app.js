@@ -96,7 +96,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-//start services
+//start services (only for local development, not serverless)
 async function startServices() {
     console.log('Starting TerraCRED backend services...');
 
@@ -121,10 +121,19 @@ async function startServices() {
     console.log('All services started.');
 }
 
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, async () => {
-    await startServices();
-    console.log(`\n📡 Backend running on http://localhost:${PORT}`);
-});
+// Only start the server if not in serverless environment (Vercel)
+if (process.env.VERCEL !== '1' && require.main === module) {
+    const PORT = process.env.PORT || 3001;
+    app.listen(PORT, async () => {
+        await startServices();
+        console.log(`\n📡 Backend running on http://localhost:${PORT}`);
+    });
+} else {
+    // In serverless, just set the HCS topic ID if available
+    if (process.env.HCS_TOPIC_ID) {
+        hcsService.topicId = process.env.HCS_TOPIC_ID;
+    }
+    console.log('Running in serverless mode (Vercel)');
+}
 
 module.exports = app;
