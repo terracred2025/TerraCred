@@ -129,6 +129,7 @@ class DatabaseService {
     }
 
     getMaxPropertyId() {
+        if (this.useFallback) return 0;
         const result = this.db.prepare(`
             SELECT propertyId FROM properties
             WHERE propertyId LIKE 'PROP%'
@@ -142,6 +143,7 @@ class DatabaseService {
     }
 
     getMaxUserId() {
+        if (this.useFallback) return 0;
         const result = this.db.prepare(`
             SELECT userId FROM users
             WHERE userId LIKE 'USER%'
@@ -155,6 +157,7 @@ class DatabaseService {
     }
 
     getMaxTransactionId() {
+        if (this.useFallback) return 0;
         const result = this.db.prepare(`
             SELECT txId FROM transactions
             WHERE txId LIKE 'TX%'
@@ -323,6 +326,22 @@ class DatabaseService {
         const userId = user.userId || `USER${String(this.userCounter++).padStart(3, '0')}`;
         user.userId = userId;
 
+        if (this.useFallback) {
+            const u = {
+                userId,
+                accountId: user.accountId,
+                email: user.email || null,
+                name: user.name || null,
+                kycStatus: user.kycStatus || null,
+                kycLevel: user.kycLevel || null,
+                kycProvider: user.kycProvider || null,
+                kycVerifiedAt: user.kycVerifiedAt ? new Date(user.kycVerifiedAt).toISOString() : null,
+                createdAt: user.createdAt ? new Date(user.createdAt).toISOString() : new Date().toISOString()
+            };
+            this.memoryStore.users.set(user.accountId, u);
+            return u;
+        }
+
         const stmt = this.db.prepare(`
             INSERT INTO users (
                 userId, accountId, email, name, kycStatus,
@@ -346,6 +365,17 @@ class DatabaseService {
     }
 
     getUser(identifier) {
+        if (this.useFallback) {
+            // Check by accountId first
+            let user = this.memoryStore.users.get(identifier);
+            if (user) return user;
+            // Search by userId
+            for (const u of this.memoryStore.users.values()) {
+                if (u.userId === identifier) return u;
+            }
+            return null;
+        }
+
         // Try by userId first
         let stmt = this.db.prepare('SELECT * FROM users WHERE userId = ?');
         let row = stmt.get(identifier);
@@ -360,6 +390,9 @@ class DatabaseService {
     }
 
     getUserByAccountId(accountId) {
+        if (this.useFallback) {
+            return this.memoryStore.users.get(accountId) || null;
+        }
         const stmt = this.db.prepare('SELECT * FROM users WHERE accountId = ?');
         return stmt.get(accountId) || null;
     }
@@ -367,6 +400,18 @@ class DatabaseService {
     updateUserKYC(accountId, kycData) {
         const user = this.getUserByAccountId(accountId);
         if (!user) return null;
+
+        if (this.useFallback) {
+            for (const [key, value] of Object.entries(kycData)) {
+                if (key === 'kycVerifiedAt') {
+                    user[key] = value ? new Date(value).toISOString() : null;
+                } else {
+                    user[key] = value;
+                }
+            }
+            this.memoryStore.users.set(accountId, user);
+            return user;
+        }
 
         const updates = [];
         const values = [];
@@ -401,6 +446,19 @@ class DatabaseService {
         const txId = `TX${String(this.transactionCounter++).padStart(6, '0')}`;
         transaction.txId = txId;
 
+        if (this.useFallback) {
+            const tx = {
+                txId,
+                type: transaction.type,
+                propertyId: transaction.propertyId || null,
+                userAddress: transaction.userAddress,
+                data: transaction.data || {},
+                timestamp: transaction.timestamp ? new Date(transaction.timestamp).toISOString() : new Date().toISOString()
+            };
+            this.memoryStore.transactions.set(txId, tx);
+            return tx;
+        }
+
         const stmt = this.db.prepare(`
             INSERT INTO transactions (
                 txId, type, propertyId, userAddress, data, timestamp
@@ -420,6 +478,9 @@ class DatabaseService {
     }
 
     getTransaction(txId) {
+        if (this.useFallback) {
+            return this.memoryStore.transactions.get(txId) || null;
+        }
         const stmt = this.db.prepare('SELECT * FROM transactions WHERE txId = ?');
         const row = stmt.get(txId);
         if (!row) return null;
@@ -431,6 +492,11 @@ class DatabaseService {
     }
 
     getTransactionsByUser(userAddress) {
+        if (this.useFallback) {
+            return Array.from(this.memoryStore.transactions.values())
+                .filter(tx => tx.userAddress === userAddress)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
         const stmt = this.db.prepare('SELECT * FROM transactions WHERE userAddress = ? ORDER BY timestamp DESC');
         const rows = stmt.all(userAddress);
         return rows.map(row => ({
@@ -440,6 +506,10 @@ class DatabaseService {
     }
 
     getAllTransactions() {
+        if (this.useFallback) {
+            return Array.from(this.memoryStore.transactions.values())
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        }
         const stmt = this.db.prepare('SELECT * FROM transactions ORDER BY timestamp DESC');
         const rows = stmt.all();
         return rows.map(row => ({
@@ -453,6 +523,25 @@ class DatabaseService {
     // ============================================
 
     getAssetByTokenId(tokenId) {
+        if (this.useFallback) {
+            const property = Array.from(this.memoryStore.properties.values())
+                .find(p => p.tokenId === tokenId);
+            if (!property) return null;
+            return {
+                tokenId: property.tokenId,
+                tokenAddress: property.tokenAddress,
+                propertyId: property.propertyId,
+                owner: property.owner,
+                address: property.address,
+                value: property.value,
+                description: property.description,
+                tokenSupply: property.tokenSupply,
+                status: property.status,
+                verifiedAt: property.verifiedAt,
+                createdAt: property.createdAt
+            };
+        }
+
         const stmt = this.db.prepare('SELECT * FROM properties WHERE tokenId = ?');
         const row = stmt.get(tokenId);
         if (!row) return null;
@@ -474,6 +563,25 @@ class DatabaseService {
     }
 
     getAssetsByOwner(ownerAddress) {
+        if (this.useFallback) {
+            return Array.from(this.memoryStore.properties.values())
+                .filter(p => p.owner === ownerAddress && p.tokenId)
+                .map(property => ({
+                    tokenId: property.tokenId,
+                    tokenAddress: property.tokenAddress,
+                    propertyId: property.propertyId,
+                    owner: property.owner,
+                    address: property.address,
+                    value: property.value,
+                    description: property.description,
+                    tokenSupply: property.tokenSupply,
+                    status: property.status,
+                    verifiedAt: property.verifiedAt,
+                    createdAt: property.createdAt
+                }))
+                .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        }
+
         const stmt = this.db.prepare('SELECT * FROM properties WHERE owner = ? AND tokenId IS NOT NULL ORDER BY createdAt DESC');
         const rows = stmt.all(ownerAddress);
         return rows.map(row => {
@@ -499,12 +607,25 @@ class DatabaseService {
     // ============================================
 
     close() {
+        if (this.useFallback) {
+            console.log('✅ In-memory store cleanup (no-op)');
+            return;
+        }
         this.db.close();
         console.log('✅ Database connection closed');
     }
 
     // Get database stats
     getStats() {
+        if (this.useFallback) {
+            return {
+                properties: this.memoryStore.properties.size,
+                users: this.memoryStore.users.size,
+                transactions: this.memoryStore.transactions.size,
+                dbPath: 'in-memory'
+            };
+        }
+
         const propertiesCount = this.db.prepare('SELECT COUNT(*) as count FROM properties').get().count;
         const usersCount = this.db.prepare('SELECT COUNT(*) as count FROM users').get().count;
         const transactionsCount = this.db.prepare('SELECT COUNT(*) as count FROM transactions').get().count;
