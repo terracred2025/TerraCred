@@ -51,17 +51,35 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 
 //init hedera client
-const client = Client.forTestnet();
-client.setOperator(
-    AccountId.fromString(process.env.HEDERA_ACCOUNT_ID),
-    PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY_DER || process.env.HEDERA_PRIVATE_KEY.replace("0x", ""))
-);
+let client, hederaService, hcsService, oracleService, liquidationService;
 
-//init services
-const hederaService = new HederaService(client);
-const hcsService = new HCSService(client);
-const oracleService = new OracleService(client, hcsService);
-const liquidationService = new LiquidationService(client, hcsService);
+try {
+    client = Client.forTestnet();
+
+    if (process.env.HEDERA_ACCOUNT_ID && (process.env.HEDERA_PRIVATE_KEY_DER || process.env.HEDERA_PRIVATE_KEY)) {
+        client.setOperator(
+            AccountId.fromString(process.env.HEDERA_ACCOUNT_ID),
+            PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY_DER || process.env.HEDERA_PRIVATE_KEY.replace("0x", ""))
+        );
+        console.log('Hedera client initialized successfully');
+    } else {
+        console.warn('Hedera credentials not found. Some features may not work.');
+    }
+
+    //init services
+    hederaService = new HederaService(client);
+    hcsService = new HCSService(client);
+    oracleService = new OracleService(client, hcsService);
+    liquidationService = new LiquidationService(client, hcsService);
+} catch (error) {
+    console.error('Failed to initialize Hedera client:', error.message);
+    // Initialize with minimal services for health checks
+    client = Client.forTestnet();
+    hederaService = null;
+    hcsService = null;
+    oracleService = null;
+    liquidationService = null;
+}
 
 //make services available to routes
 app.locals.services = {
