@@ -2,9 +2,14 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure data directory exists
-const DATA_DIR = path.join(__dirname, '../../data');
-if (!fs.existsSync(DATA_DIR)) {
+// Determine database path based on environment
+// In serverless (Vercel), use /tmp directory which is writable
+// In local dev, use the data directory
+const isServerless = process.env.VERCEL === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
+const DATA_DIR = isServerless ? '/tmp' : path.join(__dirname, '../../data');
+
+// Ensure data directory exists (only needed for local dev)
+if (!isServerless && !fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
