@@ -3,14 +3,14 @@
   "public": true,
   "builds": [
     {
-      "src": "src/app.js",
+      "src": "src/app-minimal.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/(.*)",
-      "dest": "src/app.js"
+      "dest": "src/app-minimal.js"
     }
   ]
 }
