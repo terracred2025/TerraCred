@@ -80,6 +80,83 @@ app.get('/api/properties/:id', (req, res) => {
     res.json({ success: true, property });
 });
 
+// Admin: Verify property
+app.post('/api/properties/:id/verify', (req, res) => {
+    try {
+        const property = store.properties.get(req.params.id);
+        if (!property) return res.status(404).json({ success: false, error: 'Property not found' });
+
+        const { verifier, appraisalHash, deedHash } = req.body;
+
+        // Update property to verified status
+        property.status = 'verified';
+        property.verifiedAt = new Date().toISOString();
+        property.verifier = verifier || 'admin';
+        property.appraisalHash = appraisalHash || '';
+        property.deedHash = deedHash || '';
+
+        // Generate token info (simulated)
+        property.tokenId = `0.0.${Math.floor(Math.random() * 1000000)}`;
+        property.tokenAddress = `0x${Math.random().toString(16).slice(2, 42)}`;
+
+        store.properties.set(req.params.id, property);
+
+        res.json({
+            success: true,
+            property,
+            message: 'Property verified successfully'
+        });
+    } catch (error) {
+        console.error('Verification error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Admin: Reject property
+app.post('/api/properties/:id/reject', (req, res) => {
+    try {
+        const property = store.properties.get(req.params.id);
+        if (!property) return res.status(404).json({ success: false, error: 'Property not found' });
+
+        const { reason } = req.body;
+
+        property.status = 'rejected';
+        property.rejectedAt = new Date().toISOString();
+        property.rejectionReason = reason || 'No reason provided';
+
+        store.properties.set(req.params.id, property);
+
+        res.json({
+            success: true,
+            property,
+            message: 'Property rejected'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+// Admin: Delist property
+app.post('/api/properties/:id/delist', (req, res) => {
+    try {
+        const property = store.properties.get(req.params.id);
+        if (!property) return res.status(404).json({ success: false, error: 'Property not found' });
+
+        property.status = 'delisted';
+        property.delistedAt = new Date().toISOString();
+
+        store.properties.set(req.params.id, property);
+
+        res.json({
+            success: true,
+            property,
+            message: 'Property delisted'
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 // Users API
 app.post('/api/users', (req, res) => {
     const { accountId, email, name } = req.body;
