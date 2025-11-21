@@ -1,369 +1,345 @@
-# TerraCred Backend
+# TerraCred Protocol
 
-Backend API server for the TerraCred Protocol - A DeFi lending platform built on Hedera that enables borrowing against tokenized real estate assets.
+A DeFi lending platform built on Hedera that enables borrowing against tokenized real estate assets. TerraCred bridges traditional real estate with decentralized finance, allowing property owners to unlock liquidity without selling their assets.
 
-## Features
+## Hedera Hello Future: Ascension Hackathon 2025
 
-- 🏠 **Property Tokenization**: Convert real estate into fungible RWA tokens via Hedera Token Service
-- 💰 **Lending Operations**: Deposit collateral, borrow heNGN stablecoin, manage loans
-- 📊 **Price Oracle**: Real-time asset valuation with staleness protection
-- 🔒 **Automated Liquidation**: Continuous health factor monitoring and automated liquidations
-- 📝 **Immutable Audit Trail**: All events logged via Hedera Consensus Service (HCS)
+**Demo:** [Live Application](#) | **Video:** [Demo Video](#)
+
+## Overview
+
+TerraCred solves the liquidity problem for real estate owners in Nigeria by:
+1. **Tokenizing** real estate properties into fungible RWA (Real World Assets) tokens
+2. **Enabling** property owners to use tokens as collateral for loans
+3. **Borrowing** heNGN stablecoin without selling their properties
+4. **Automating** liquidations and maintaining platform solvency through smart contracts
+
+Built entirely on Hedera with HashPack wallet integration, immutable audit trails via HCS, and real-time oracle pricing.
+
+## ✨ Key Features
+
+### Frontend (Next.js + HashPack)
+- 🦜 **HashPack Wallet Integration**: Seamless connection using Hedera WalletConnect
+- 🏠 **Property Submission Portal**: Submit properties with details, valuation, and token supply
+- 💰 **Borrow Interface**: Deposit collateral and borrow heNGN stablecoin
+- 📊 **User Dashboard**: View your properties, loans, health factor, and transaction history
+- 💸 **Loan Management**: Repay loans and withdraw collateral
+- 👨‍💼 **Admin Panel**: Verify properties and approve KYC (demo purposes)
+
+### Backend API (Express + Hedera SDK)
+- 🏠 **Property Management**: Submit, verify, reject, and tokenize real estate
+- 🪙 **Token Operations**: Create, mint, burn, associate, and manage RWA tokens via HTS
+- 💰 **Lending Operations**: Deposit, borrow, repay, withdraw, liquidate
+- 📊 **Oracle Service**: Automated price updates every 60 minutes
+- 🔒 **Liquidation Service**: Monitor health factors and execute liquidations
+- 📝 **Immutable Audit Trail**: Log all events to Hedera Consensus Service (HCS)
 - 👤 **KYC Management**: User verification and compliance tracking
+- 📈 **Analytics**: Transaction history, loan details, asset valuation
 
-## Architecture
+### Smart Contracts (Solidity)
+- 💎 **LendingPool.sol**: Core lending logic with collateral management
+- 📊 **PriceOracle.sol**: On-chain price feeds with staleness protection
+- 🪙 **Token Standards**: heNGN stablecoin and RWA token implementations
 
-### Core Services
+## 🛠️ Tech Stack
 
-1. **Hedera Service** - Token operations (create, mint, burn, associate, KYC)
-2. **HCS Service** - Consensus logging for audit trail
-3. **Oracle Service** - Price updates and valuation
-4. **Liquidation Service** - Automated position monitoring
+**Frontend:**
+- Next.js 16 + React 19 + TypeScript
+- HashConnect 3.0 (Hedera WalletConnect)
+- TailwindCSS + Lucide Icons
+- Redux Toolkit for state management
 
-### API Routes
+**Backend:**
+- Node.js + Express
+- @hashgraph/sdk (Hedera SDK)
+- In-memory storage (MVP) - PostgreSQL ready
 
-- `/api/properties` - Property submission, verification, tokenization
-- `/api/users` - User profiles and KYC management
-- `/api/assets` - Tokenized asset queries and valuation
-- `/api/loans` - Loan details and history
-- `/api/transactions` - Complete audit trail
+**Smart Contracts:**
+- Solidity 0.8.20
+- Hedera Token Service (HTS)
+- Hedera Consensus Service (HCS)
+- Foundry (testing & deployment)
 
-## Prerequisites
+**Blockchain:**
+- Hedera Testnet
+- HashPack Wallet
+- JSON-RPC Relay for contract interactions
+
+## 🏗️ Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Frontend (Next.js)                       │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ Tokenize │  │  Borrow  │  │Dashboard │  │  Admin   │   │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘   │
+│       │             │              │             │          │
+│       └─────────────┴──────────────┴─────────────┘          │
+│                         │                                    │
+│                    HashPack Wallet                          │
+└─────────────────────────┼───────────────────────────────────┘
+                          │
+┌─────────────────────────┼───────────────────────────────────┐
+│                    Backend (Express)                        │
+│  ┌───────────────┐  ┌────────────┐  ┌─────────────┐        │
+│  │   API Routes  │  │  Services  │  │   Storage   │        │
+│  │ /properties   │  │  Hedera    │  │  In-Memory  │        │
+│  │ /loans        │  │  HCS       │  │   Store     │        │
+│  │ /assets       │  │  Oracle    │  │             │        │
+│  │ /users        │  │  Liquidate │  │             │        │
+│  └───────┬───────┘  └─────┬──────┘  └─────────────┘        │
+└──────────┼──────────────────┼──────────────────────────────┘
+           │                  │
+           │     ┌────────────┴──────────────┐
+           │     │                           │
+┌──────────┼─────┼───────────────────────────┼───────────────┐
+│          │     │    Hedera Network         │               │
+│  ┌───────▼─────▼────┐  ┌──────────────┐  ┌▼─────────────┐ │
+│  │ Smart Contracts  │  │     HTS      │  │     HCS      │ │
+│  │ - LendingPool    │  │ Token Mgmt   │  │ Audit Trail  │ │
+│  │ - PriceOracle    │  │ RWA Tokens   │  │ Event Logs   │ │
+│  └──────────────────┘  └──────────────┘  └──────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+
+1. **Property Tokenization**
+   - User submits property → Backend validates → Admin verifies → HTS creates token → Event logged to HCS
+
+2. **Borrowing Flow**
+   - User deposits collateral → Smart contract validates → heNGN transferred → Loan created → Event logged
+
+3. **Oracle Updates**
+   - Cron job triggers → Backend fetches prices → Updates smart contract → HCS logs event
+
+4. **Liquidation Flow**
+   - Service monitors health factors → Detects undercollateralization → Executes liquidation → Seizes collateral
+
+## 🚀 Quick Start
+
+### Prerequisites
 
 - Node.js >= 18.0.0
 - npm >= 9.0.0
-- Hedera Testnet account ([Get one here](https://portal.hedera.com))
-- Deployed smart contracts (LendingPool, PriceOracle)
+- HashPack Wallet ([Download here](https://www.hashpack.app/))
+- Hedera Testnet account ([Get free testnet HBAR](https://portal.hedera.com/faucet))
 
-## Installation
+### 1️⃣ Clone and Install
 
 ```bash
-# Install dependencies
+# Clone the repository
+git clone https://github.com/yourusername/terracred.git
+cd terracred
+
+# Install root dependencies
 npm install
 
-# Copy environment template
-cp .env.sample .env
+# Install frontend dependencies
+cd frontend
+npm install
 
-# Edit .env with your credentials
-nano .env
+# Install backend dependencies
+cd ../backend
+npm install
 ```
 
-## Configuration
+### 2️⃣ Setup Hedera Credentials
 
-### 1. Get Hedera Credentials
+1. **Get Testnet Account**
+   - Visit [Hedera Portal](https://portal.hedera.com)
+   - Create testnet account
+   - Fund with test HBAR from [faucet](https://portal.hedera.com/faucet)
 
-1. Visit [Hedera Portal](https://portal.hedera.com)
-2. Create a testnet account
-3. Copy your Account ID and Private Key
-4. Add to `.env` file
+2. **Configure Backend**
+   ```bash
+   cd backend
+   cp .env.sample .env
+   # Edit .env with your Hedera credentials
+   ```
 
-### 2. Deploy Smart Contracts
+   Required variables:
+   ```env
+   HEDERA_ACCOUNT_ID=0.0.xxxxx
+   HEDERA_PRIVATE_KEY=302e...
+   HENGN_TOKEN_ID=0.0.xxxxx
+   MASTER_RWA_TOKEN_ID=0.0.xxxxx
+   LENDING_POOL_ADDRESS=0x...
+   ORACLE_ADDRESS=0x...
+   ```
+
+### 3️⃣ Deploy Smart Contracts
 
 ```bash
-cd ../contracts
+cd contracts
 forge build
-forge script script/Deploy.s.sol --rpc-url $HEDERA_RPC_URL --broadcast
+forge script script/Deploy.s.sol --rpc-url https://testnet.hashio.io/api --broadcast
 ```
 
-Copy the deployed contract addresses to your `.env` file:
-- `LENDING_POOL_ADDRESS`
-- `ORACLE_ADDRESS`
+Copy the deployed contract addresses to `backend/.env`
 
-### 3. Setup Tokens
+### 4️⃣ Setup Tokens
 
 ```bash
+cd backend
 npm run setup-tokens
 ```
 
-This will:
-- Create the heNGN stablecoin
-- Create a test RWA token
-- Associate tokens with your account
-- Grant KYC permissions
+This creates:
+- heNGN stablecoin
+- Test RWA property token
+- Proper token associations and KYC
 
-**Important**: Save the generated token IDs to your `.env` file.
+Save the generated token IDs to `backend/.env`
 
-### 4. Configure Service Keys
+### 5️⃣ Run the Application
 
-Generate separate private keys for oracle and liquidation services:
-
+**Terminal 1 - Backend:**
 ```bash
-# Generate new keys (optional - can use main key for demo)
-# Add to .env as ORACLE_PRIVATE_KEY and LIQUIDATION_PRIVATE_KEY
-```
-
-## Running the Backend
-
-### Development Mode
-
-```bash
+cd backend
 npm run dev
+# Server runs on http://localhost:3001
 ```
 
-The server will start on `http://localhost:3001` with auto-reload enabled.
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev
+# App runs on http://localhost:3000
+```
 
-### Production Mode
+### 6️⃣ Connect HashPack Wallet
+
+1. Install [HashPack browser extension](https://www.hashpack.app/)
+2. Create or import account
+3. Switch to Hedera Testnet
+4. Visit http://localhost:3000
+5. Click "Connect HashPack" button
+6. Approve connection in HashPack
+
+
+
+## 🔌 API Endpoints
+
+**Backend runs on `http://localhost:3001`**
+
+### Properties
+- `POST /api/properties` - Submit property
+- `GET /api/properties/:id/status` - Check status
+- `POST /api/properties/:id/verify` - Admin verify
+- `POST /api/properties/:id/reject` - Admin reject
+
+### Loans
+- `GET /api/loans/:accountId` - Get loan details
+- `POST /api/loans/deposit` - Deposit collateral
+- `POST /api/loans/borrow` - Borrow heNGN
+- `POST /api/loans/repay` - Repay loan
+- `POST /api/loans/withdraw` - Withdraw collateral
+
+### Assets
+- `GET /api/assets?owner=0.0.xxxxx` - Get user assets
+
+### Users
+- `POST /api/users/kyc` - Submit KYC
+- `POST /api/users/:accountId/kyc/approve` - Approve KYC
+
+### Transactions
+- `GET /api/transactions?owner=0.0.xxxxx` - Transaction history
+
+See complete API docs in [backend/README.md](backend/README.md)
+
+## 🧪 Testing
 
 ```bash
-npm start
+# Test backend API
+./test-api.sh
+
+# Test deposit flow
+node test-deposit-flow.js
+
+# Test loan details
+node test-loan-details.js
+
+# Check token association
+node check-hengn-association.js
 ```
 
-## API Documentation
+## 💡 How It Works
 
-### Health Check
+### User Journey
 
-```bash
-GET /health
+1. **Property Owner** submits property for tokenization via frontend
+2. **Admin** verifies property details and documentation
+3. **Backend** creates fungible RWA tokens using Hedera Token Service (HTS)
+4. **Property Owner** receives tokens representing fractional ownership
+5. **Property Owner** deposits tokens as collateral in smart contract
+6. **Smart Contract** validates collateral and calculates borrowing power
+7. **Property Owner** borrows heNGN stablecoin (up to 50% LTV)
+8. **Oracle Service** updates property prices every 60 minutes
+9. **Liquidation Service** monitors health factors and liquidates undercollateralized positions
+10. **All events** are logged to Hedera Consensus Service (HCS) for transparency
 
-Response:
-{
-  "status": "healthy",
-  "timestamp": "2025-10-22T12:00:00.000Z",
-  "network": "testnet"
-}
-```
+### Key Metrics
 
-### Submit Property
+- **Loan-to-Value (LTV)**: 50% (borrow up to half property value)
+- **Liquidation Threshold**: 80% (liquidated when collateral falls below)
+- **Interest Rate**: 5% annual (heNGN stablecoin)
+- **Liquidation Penalty**: 10% bonus for liquidators
 
-```bash
-POST /api/properties
+## 🎯 Hackathon Context
 
-Body:
-{
-  "owner": "0.0.12345",
-  "address": "123 Victoria Island, Lagos",
-  "value": 50000000,
-  "description": "4-bedroom apartment",
-  "tokenSupply": 1000
-}
+**Built for:** Hedera Africa Hackathon 2025
+**Category:** DeFi / Real World Assets (RWA)
+**Region:** Nigeria (heNGN stablecoin pegged to Nigerian Naira)
 
-Response:
-{
-  "success": true,
-  "property": {
-    "propertyId": "PROP004",
-    "status": "pending",
-    "message": "Property submitted for verification"
-  }
-}
-```
+### Problem Statement
 
-### Check Property Status
+Real estate is the largest asset class in Africa, but property owners face:
+- Difficulty accessing liquidity without selling
+- Long processes for traditional loans
+- High interest rates
+- Lack of fractional ownership
 
-```bash
-GET /api/properties/PROP001/status
+### Solution
 
-Response:
-{
-  "success": true,
-  "status": {
-    "propertyId": "PROP001",
-    "status": "verified",
-    "verifiedAt": "2025-10-15T10:00:00.000Z",
-    "tokenId": "0.0.11111",
-    "tokenAddress": "0x1234...",
-    "message": "Property verified and tokenized"
-  }
-}
-```
+TerraCred provides:
+- Instant liquidity through collateralized loans
+- Transparent, automated lending via smart contracts
+- Fractional property ownership through tokenization
+- Lower interest rates compared to traditional banks
+- Immutable audit trail on Hedera
 
-### Get User's Assets
+### Hedera Features Utilized
 
-```bash
-GET /api/assets?owner=0.0.12345
+- ✅ **Hedera Token Service (HTS)** - Property tokenization
+- ✅ **Hedera Consensus Service (HCS)** - Audit trail logging
+- ✅ **Smart Contracts** - Lending logic and oracle
+- ✅ **JSON-RPC Relay** - Contract interactions
+- ✅ **HashPack Integration** - Wallet connectivity
 
-Response:
-{
-  "success": true,
-  "count": 2,
-  "assets": [
-    {
-      "tokenId": "0.0.11111",
-      "propertyId": "PROP001",
-      "address": "123 Victoria Island, Lagos",
-      "value": 50000000,
-      "tokenSupply": 1000
-    }
-  ]
-}
-```
+## 📚 Additional Documentation
 
-### Get Loan Details
+- [QUICK_START.md](./QUICK_START.md) - 5-minute setup guide
+- [WALLET_IMPLEMENTATION.md](./WALLET_IMPLEMENTATION.md) - HashPack integration details
+- [TOKEN_ECONOMICS_FIXES.md](./TOKEN_ECONOMICS_FIXES.md) - Token economics
+- [FEE_IMPLEMENTATION.md](./FEE_IMPLEMENTATION.md) - Fee structure
+- [REDEPLOY_GUIDE.md](./REDEPLOY_GUIDE.md) - Deployment guide
 
-```bash
-GET /api/loans/0.0.12345
 
-Response:
-{
-  "success": true,
-  "loan": {
-    "collateralAmount": "500",
-    "collateralToken": "0x1234...",
-    "borrowedAmount": "20000000",
-    "totalDebt": "21000000",
-    "healthFactor": "150",
-    "maxBorrow": "5000000"
-  }
-}
-```
+For detailed debugging, check browser console (F12) and backend logs.
 
-### Submit KYC
+## 🚀 Production Considerations
 
-```bash
-POST /api/users/kyc
+This is a hackathon MVP. For production deployment:
 
-Body:
-{
-  "accountId": "0.0.12345",
-  "email": "user@example.com",
-  "name": "John Doe",
-  "kycProvider": "Persona"
-}
+- [ ] Replace in-memory storage with PostgreSQL
+- [ ] Implement JWT authentication and authorization
+- [ ] Add comprehensive input validation and sanitization
+- [ ] Implement rate limiting and DDoS protection
+- [ ] Add structured logging (Winston/Pino)
+- [ ] Set up monitoring and alerting
+- [ ] Conduct security audit of smart contracts
+- [ ] Implement automated testing (unit, integration, e2e)
+- [ ] Add proper error handling and recovery
+- [ ] Scale oracle and liquidation services
 
-Response:
-{
-  "success": true,
-  "message": "KYC submitted for verification",
-  "kyc": {
-    "userId": "USER001",
-    "accountId": "0.0.12345",
-    "status": "pending"
-  }
-}
-```
-
-### Get Transaction History
-
-```bash
-GET /api/transactions?owner=0.0.12345&limit=10
-
-Response:
-{
-  "success": true,
-  "count": 5,
-  "transactions": [
-    {
-      "txId": "TX000001",
-      "type": "PROPERTY_VERIFIED",
-      "propertyId": "PROP001",
-      "userAddress": "0.0.12345",
-      "timestamp": "2025-10-15T10:00:00.000Z"
-    }
-  ]
-}
-```
-
-## Service Operations
-
-### Oracle Price Updates
-
-The oracle service automatically updates property prices every 60 minutes (configurable in `app.js`).
-
-### Liquidation Monitoring
-
-The liquidation service monitors loan health factors every 5 minutes and executes liquidations automatically when positions become undercollateralized.
-
-## Demo Data
-
-The backend includes pre-populated dummy data for demo purposes:
-
-- **3 Properties** (2 verified, 1 pending)
-- **2 Users** (1 KYC verified, 1 pending)
-- **Sample Transactions** (property verifications, loans)
-
-Access demo data through the API endpoints or check `src/data/store.js`.
-
-## Admin Endpoints (For Demo)
-
-These endpoints simulate admin actions for the MVP:
-
-```bash
-# Verify a property
-POST /api/properties/:propertyId/verify
-
-# Approve KYC
-POST /api/users/:accountId/kyc/approve
-```
-
-## Development
-
-### Project Structure
-
-```
-backend/
-├── src/
-│   ├── app.js                 # Main application file
-│   ├── data/
-│   │   └── store.js          # In-memory data store (MVP)
-│   ├── routes/
-│   │   ├── assets.routes.js
-│   │   ├── loan.routes.js
-│   │   ├── property.routes.js
-│   │   ├── transactions.routes.js
-│   │   └── user.routes.js
-│   └── services/
-│       ├── hedera.service.js
-│       ├── hcs.service.js
-│       ├── liquidation.service.js
-│       └── oracle.service.js
-├── scripts/
-│   └── setup-tokens.js       # Token creation script
-├── .env.sample               # Environment template
-└── package.json
-```
-
-### Adding New Features
-
-1. Create route file in `src/routes/`
-2. Add service logic in `src/services/` if needed
-3. Register route in `src/app.js`
-4. Update data store in `src/data/store.js`
-
-## Troubleshooting
-
-### Service Won't Start
-
-- Check that all environment variables are set correctly
-- Verify Hedera account has sufficient HBAR balance
-- Ensure contract addresses are deployed and correct
-
-### Token Operations Failing
-
-- Verify token IDs are set in .env
-- Check token associations and KYC status
-- Ensure operator has the required keys (supply, admin, etc.)
-
-### Oracle/Liquidation Not Working
-
-- Verify private keys have sufficient HBAR
-- Check contract addresses are correct
-- Review console logs for specific errors
-
-## Production Considerations
-
-For production deployment:
-
-1. **Replace In-Memory Store**: Implement PostgreSQL database
-2. **Add Authentication**: Implement JWT-based auth
-3. **Rate Limiting**: Add API rate limiting
-4. **Error Handling**: Implement comprehensive error handling
-5. **Logging**: Use structured logging (Winston, Pino)
-6. **Monitoring**: Add health checks and alerting
-7. **Security**: Implement input validation and sanitization
-8. **Scalability**: Use connection pooling and caching
-
-## Contributing
-
-This is a hackathon MVP. For production use, please conduct a thorough security audit and implement proper testing.
-
-## License
-
-MIT
-
-## Support
-
-For questions or issues, please contact the TerraCred team.
-
----
-
-Built for Hedera Africa Hackathon 2025 🚀
