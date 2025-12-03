@@ -1,6 +1,6 @@
 # TerraCred Protocol
 
-A DeFi lending platform built on Hedera that enables borrowing against tokenized real estate assets. TerraCred bridges traditional real estate with decentralized finance, allowing property owners to unlock liquidity without selling their assets.
+A DeFi lending platform built on Hedera that enables borrowing against tokenized real estate assets. TerraCred bridges traditional real estate with decentralized finance, allowing property owners to unlock liquidity without selling their assets
 
 ## Hedera Hello Future: Ascension Hackathon 2025
 
