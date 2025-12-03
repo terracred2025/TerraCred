@@ -122,27 +122,29 @@ export default function AnimatedBrickBackground() {
     return pathSegments.join(' ');
   }, [brickWidth, brickHeight, rows, cols, seededRandom]);
 
-  // Snakes mostly on edges, less in center
+  // Snakes distributed naturally - edges, mid-ground, and off-center
   const snakeConfigs = useMemo(() => [
-    // Left edge area
-    { startRow: 1, startCol: 1, numBricks: 6, speed: 8, delay: 0, type: 'brick' as const },
-    { startRow: 6, startCol: 2, segments: 5, speed: 9, delay: 2, type: 'mortar' as const },
-    { startRow: 12, startCol: 1, numBricks: 5, speed: 9, delay: 4, type: 'brick' as const },
-    { startRow: 18, startCol: 2, numBricks: 4, speed: 8, delay: 1, type: 'brick' as const },
+    // Left edge
+    { startRow: 1, startCol: 1, numBricks: 5, speed: 8, delay: 0, type: 'brick' as const },
+    { startRow: 10, startCol: 2, numBricks: 4, speed: 9, delay: 3, type: 'brick' as const },
+    { startRow: 19, startCol: 1, numBricks: 4, speed: 8, delay: 6, type: 'brick' as const },
 
-    // Right edge area
-    { startRow: 2, startCol: 28, numBricks: 5, speed: 8, delay: 1.5, type: 'brick' as const },
-    { startRow: 8, startCol: 30, segments: 4, speed: 8, delay: 3.5, type: 'mortar' as const },
-    { startRow: 14, startCol: 29, numBricks: 4, speed: 8, delay: 0.5, type: 'brick' as const },
-    { startRow: 20, startCol: 28, segments: 4, speed: 7, delay: 5, type: 'mortar' as const },
+    // Left mid-ground (columns 6-10)
+    { startRow: 5, startCol: 7, segments: 4, speed: 9, delay: 1.5, type: 'mortar' as const },
+    { startRow: 15, startCol: 8, numBricks: 4, speed: 8, delay: 4.5, type: 'brick' as const },
 
-    // Top area (spread)
-    { startRow: 1, startCol: 10, numBricks: 4, speed: 9, delay: 3, type: 'brick' as const },
-    { startRow: 2, startCol: 22, segments: 4, speed: 8, delay: 6, type: 'mortar' as const },
+    // Right edge
+    { startRow: 2, startCol: 30, numBricks: 5, speed: 8, delay: 2, type: 'brick' as const },
+    { startRow: 12, startCol: 29, numBricks: 4, speed: 8, delay: 5, type: 'brick' as const },
+    { startRow: 21, startCol: 30, segments: 3, speed: 7, delay: 1, type: 'mortar' as const },
 
-    // Bottom area (spread)
-    { startRow: 22, startCol: 8, numBricks: 4, speed: 8, delay: 2.5, type: 'brick' as const },
-    { startRow: 21, startCol: 24, segments: 3, speed: 7, delay: 4.5, type: 'mortar' as const },
+    // Right mid-ground (columns 22-26)
+    { startRow: 6, startCol: 24, numBricks: 4, speed: 9, delay: 3.5, type: 'brick' as const },
+    { startRow: 16, startCol: 23, segments: 4, speed: 8, delay: 7, type: 'mortar' as const },
+
+    // Off-center (not dead center, columns 14-18)
+    { startRow: 3, startCol: 15, numBricks: 3, speed: 10, delay: 5, type: 'brick' as const },
+    { startRow: 18, startCol: 16, segments: 3, speed: 9, delay: 8, type: 'mortar' as const },
   ], []);
 
   useEffect(() => {
@@ -172,7 +174,7 @@ export default function AnimatedBrickBackground() {
 
       // Fade in quickly
       tl.to(pathElement, {
-        opacity: 0.2,
+        opacity: 0.15,
         duration: 0.3,
         ease: 'power2.out',
       });
@@ -186,7 +188,7 @@ export default function AnimatedBrickBackground() {
 
       // Brief slightly brighter pulse
       tl.to(pathElement, {
-        opacity: 0.25,
+        opacity: 0.2,
         duration: 0.2,
         ease: 'sine.out',
       });
